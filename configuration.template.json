@@ -1,0 +1,44 @@
+{
+    "siteTitle": "Datacity CKAN Automation",
+    "kinds": [
+        {
+            "name": "ckan_sync",
+            "display": "Sync CKAN Instances",
+            "fields": [
+                {
+                    "name": "source",
+                    "display": "Source CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "target",
+                    "display" : "Target CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                }
+            ]
+        }
+    ],
+    "theme": {
+        "primary": "#333",
+        "primary_dark": "#222",
+        "secondary": "#fff"
+    },
+    "schedules": [
+        {"name": "@daily", "display": "Daily"},
+        {"name": "@weekly", "display": "Weekly"},
+        {"name": "@monthly", "display": "Monthly"},
+        {"name": "@yearly", "display": "Yearly"},
+        {"name": "manual", "display": "Manual"}
+    ],
+    "homepage": "https://www.datacity.org/",
+    "taskDescription": "Task description",
+    "dateFormats": [
+        {"display": "Automatic",                           "format": "auto"},
+        {"display": "Automatic - YMD",                     "format": "auto_ymd"},
+        {"display": "Automatic - DMY",                     "format": "auto_dmy"},
+        {"display": "Automatic - YDM",                     "format": "auto_ydm"},
+        {"display": "Automatic - MDY",                     "format": "auto_mdy"}
+    ]
+}
