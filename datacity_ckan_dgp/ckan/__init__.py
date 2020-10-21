@@ -5,7 +5,7 @@ import datetime
 
 def get_instance_api_key_url(instance_name):
     return (
-        os.environ['CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_API_KEY'],
+        os.environ.get('CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_API_KEY'),
         os.environ['CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_URL']
     )
 
@@ -13,7 +13,7 @@ def get_instance_api_key_url(instance_name):
 def api_request(method, instance_name, action_name, auth=True, **kwargs):
     api_key, url = get_instance_api_key_url(instance_name)
     url = os.path.join(url, 'api', '3', 'action', action_name)
-    return getattr(requests, method.lower())(url, headers={'Authorization': api_key} if auth else {}, **kwargs).json()
+    return getattr(requests, method.lower())(url, headers={'Authorization': api_key} if auth and api_key else {}, **kwargs).json()
 
 
 def api_get(instance_name, action_name, auth=True, **kwargs):
