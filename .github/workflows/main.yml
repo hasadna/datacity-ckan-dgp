@@ -42,7 +42,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - env:
-        DOCKER_IMAGE_NAME: "docker.pkg.github.com/hasadna/datacity-ckan-dgp/db"
+        DOCKER_IMAGE_NAME: "docker.pkg.github.com/hasadna/datacity-ckan-dgp/datacity-ckan-dgp-db"
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo "${GITHUB_TOKEN}" | docker login docker.pkg.github.com -u hasadna --password-stdin &&\
