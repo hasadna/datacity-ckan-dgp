@@ -56,7 +56,7 @@ def package_show(instance_name, package_name):
 
 
 def package_create(instance_name, data):
-    return api_post(instance_name, 'package_create', data=data)
+    return api_post(instance_name, 'package_create', json=data)
 
 
 def parse_datetime(datetime_str):
