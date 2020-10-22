@@ -63,7 +63,7 @@ def parse_datetime(datetime_str):
     return datetime.datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%f')
 
 
-def resource_create(instance_name, data, files):
+def resource_create(instance_name, data, files=None):
     return api_post(instance_name, 'resource_create', data=data, files=files)
 
 

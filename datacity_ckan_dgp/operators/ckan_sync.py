@@ -15,7 +15,10 @@ def _download_active_resources(package):
         for i, resource in enumerate(package['resources']):
             if resource['state'] != 'active':
                 continue
-            source_resource_hashes[i] = utils.http_stream_download(os.path.join(tmpdir, 'resource{}'.format(i)), requests_kwargs={'url': resource['url']})
+            if resource['url']:
+                source_resource_hashes[i] = utils.http_stream_download(os.path.join(tmpdir, 'resource{}'.format(i)), requests_kwargs={'url': resource['url']})
+            else:
+                source_resource_hashes[i] = None
         yield tmpdir, source_resource_hashes
 
 
@@ -24,25 +27,31 @@ def _create_resources(source_package, tmpdir, target_instance_name, target_packa
         if resource['state'] != 'active':
             continue
         try:
-            resource_filename = resource['url'].split('/')[-1]
-            with open(os.path.join(tmpdir, 'resource{}'.format(i)), 'rb') as f:
-                res = ckan.resource_create(target_instance_name, {
-                    'package_id': target_package_id,
-                    'url': resource_filename,
-                    'description': resource['description'],
-                    'format': resource['format'],
-                    'name': resource['name'],
-                    'hash': resource_hashes[i]
-                }, files={
-                    'upload': (resource_filename, f)
-                })
+            resource_filename = resource['url'].split('/')[-1] if resource_hashes[i] else None
+            resource_kwargs = {
+                'package_id': target_package_id,
+                'description': resource['description'],
+                'format': resource['format'],
+                'name': resource['name'],
+            }
+            if resource_filename:
+                with open(os.path.join(tmpdir, 'resource{}'.format(i)), 'rb') as f:
+                    res = ckan.resource_create(target_instance_name, {
+                        **resource_kwargs,
+                        'url': resource_filename,
+                        'hash': resource_hashes[i]
+                    }, files={
+                        'upload': (resource_filename, f)
+                    })
+            else:
+                res = ckan.resource_create(target_instance_name, resource_kwargs)
             assert res['success'], 'create resource {} failed: {}'.format(i, res)
         except Exception as e:
             print('Failed to process resource {}: {}'.format(i, resource))
             raise
 
 
-def _update_existing_package(source_package, target_instance_name, target_organization_id, target_package_name,
+def _update_existing_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
                              target_existing_package, stats):
     try:
         stats['packages_existing'] += 1
@@ -52,6 +61,27 @@ def _update_existing_package(source_package, target_instance_name, target_organi
             if package.get(attr) != source_package.get(attr):
                 has_package_changes = True
                 package[attr] = source_package.get(attr) or ''
+        _, source_instance_url = ckan.get_instance_api_key_url(source_instance_name)
+        source_package_url = source_instance_url.strip('/') + '/dataset/{}'.format(source_package['name'])
+        source_org_description = source_package.get('organization', {}).get('description', '')
+        got_extra_url, got_extra_description = False, False
+        for extra in (package.get('extras') or []):
+            if extra["key"] == "sync_source_package_url":
+                got_extra_url = True
+                if extra["value"] != source_package_url:
+                    has_package_changes = True
+                    extra["value"] = source_package_url
+            elif extra["key"] == "sync_source_org_description":
+                got_extra_description = True
+                if extra["value"] != source_org_description:
+                    has_package_changes = True
+                    extra["value"] = source_org_description
+        if not got_extra_url:
+            has_package_changes = True
+            package.setdefault('extras', []).append({"key": "sync_source_package_url", "value": source_package_url})
+        if not got_extra_description:
+            has_package_changes = True
+            package.setdefault('extras', []).append({"key": "sync_source_org_description", "value": source_org_description})
         with _download_active_resources(source_package) as (tmpdir, source_resource_hashes):
             target_resource_hashes = {}
             for i, resource in enumerate(package['resources']):
@@ -61,7 +91,7 @@ def _update_existing_package(source_package, target_instance_name, target_organi
             has_resource_changes = len(source_resource_hashes) != len(target_resource_hashes)
             if not has_resource_changes:
                 for i in source_resource_hashes:
-                    if source_resource_hashes[i] != target_resource_hashes.get(i):
+                    if (source_resource_hashes[i] or '') != (target_resource_hashes.get(i) or ''):
                         has_resource_changes = True
                     else:
                         try:
@@ -77,11 +107,11 @@ def _update_existing_package(source_package, target_instance_name, target_organi
                                 if source_resource.get(attr) != target_resource.get(attr):
                                     has_resource_changes = True
             if has_package_changes and not has_resource_changes:
-                print('updating package, no resource changes ({})'.format(target_package_name))
+                print('updating package, no resource changes ({} > {})'.format(source_package['name'], target_package_name))
                 ckan.package_update(target_instance_name, package)
                 stats['packages_existing_only_package_changes'] += 1
             elif has_resource_changes:
-                print('updating package, with resource changes ({})'.format(target_package_name))
+                print('updating package, with resource changes ({} > {})'.format(source_package['name'], target_package_name))
                 package['private'] = True
                 package['resources'] = []
                 ckan.package_update(target_instance_name, package)
@@ -90,14 +120,19 @@ def _update_existing_package(source_package, target_instance_name, target_organi
                 package['private'] = False
                 ckan.package_update(target_instance_name, package)
                 stats['packages_existing_has_resource_changes'] += 1
+            else:
+                stats['packages_existing_no_changes'] += 1
     except Exception:
         print('exception updating existing package {}: {}'.format(target_package_name, target_existing_package))
         raise
 
 
-def _create_new_package(source_package, target_instance_name, target_organization_id, target_package_name,
+def _create_new_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
                         stats):
-    print("Creating new package: {}".format(target_package_name))
+    print("Creating new package ({} > {})".format(source_package['name'], target_package_name))
+    _, source_instance_url = ckan.get_instance_api_key_url(source_instance_name)
+    source_package_url = source_instance_url.strip('/') + '/dataset/{}'.format(source_package['name'])
+    source_org_description = source_package.get('organization', {}).get('description', '')
     with _download_active_resources(source_package) as (tmpdir, resource_hashes):
         res = ckan.package_create(target_instance_name, {
             'name': target_package_name,
@@ -107,7 +142,9 @@ def _create_new_package(source_package, target_instance_name, target_organizatio
             'notes': source_package['notes'],
             'url': source_package['url'],
             'version': source_package['version'],
-            'owner_org': target_organization_id
+            'owner_org': target_organization_id,
+            'extras': [{"key": "sync_source_package_url", "value": source_package_url},
+                       {"key": "sync_source_org_description", "value": source_org_description}]
         })
         assert res['success'], 'create package failed: {}'.format(res)
         target_package_id = res['result']['id']
@@ -139,23 +176,25 @@ def operator(name, params):
                 stats['source_packages_invalid_attrs'] += 1
                 continue
             stats['source_packages_valid'] += 1
-            target_package_name = 'dgpsync_{}'.format(source_package_name)
+            target_package_name = '{}{}'.format(target_package_name_prefix, source_package_name)
             target_existing_package = ckan.package_show(target_instance_name, target_package_name)
             if target_existing_package and target_existing_package['state'] != 'deleted':
-                _update_existing_package(source_package, target_instance_name, target_organization_id, target_package_name,
+                _update_existing_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
                                          target_existing_package, stats)
             else:
-                _create_new_package(source_package, target_instance_name, target_organization_id, target_package_name,
+                _create_new_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
                                     stats)
             if stats['source_packages_valid'] % 10 == 0:
                 print(dict(stats))
         except Exception:
             traceback.print_exc()
             print('exception processing source package {}: {}'.format(source_package_name, source_package))
+            stats['source_packages_exceptions'] += 1
     print(dict(stats))
+    return stats['source_packages_exceptions'] == 0
 
 
 if __name__ == '__main__':
     import sys
     import json
-    operator('_', json.loads(sys.argv[1]))
+    exit(0 if operator('_', json.loads(sys.argv[1])) else 1)
