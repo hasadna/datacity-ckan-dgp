@@ -52,18 +52,24 @@ def _create_resources(source_package, tmpdir, target_instance_name, target_packa
 
 
 def _update_existing_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
-                             target_existing_package, stats):
+                             target_existing_package, target_package_title_prefix, stats):
     try:
         stats['packages_existing'] += 1
         package = {**target_existing_package}
         has_package_changes = False
-        for attr in ['title', 'license_id', 'notes', 'url', 'version']:
+        for attr in ['license_id', 'notes', 'url', 'version']:
             if package.get(attr) != source_package.get(attr):
                 has_package_changes = True
                 package[attr] = source_package.get(attr) or ''
         _, source_instance_url = ckan.get_instance_api_key_url(source_instance_name)
         source_package_url = source_instance_url.strip('/') + '/dataset/{}'.format(source_package['name'])
         source_org_description = source_package.get('organization', {}).get('description', '')
+        new_target_package_title = source_package['title']
+        if target_package_title_prefix:
+            new_target_package_title = '{} {}'.format(target_package_title_prefix, new_target_package_title)
+        if package['title'] != new_target_package_title:
+            has_package_changes = True
+            package['title'] = new_target_package_title
         got_extra_url, got_extra_description = False, False
         for extra in (package.get('extras') or []):
             if extra["key"] == "sync_source_package_url":
@@ -128,15 +134,18 @@ def _update_existing_package(source_instance_name, source_package, target_instan
 
 
 def _create_new_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
-                        stats):
+                        target_package_title_prefix, stats):
     print("Creating new package ({} > {})".format(source_package['name'], target_package_name))
     _, source_instance_url = ckan.get_instance_api_key_url(source_instance_name)
     source_package_url = source_instance_url.strip('/') + '/dataset/{}'.format(source_package['name'])
     source_org_description = source_package.get('organization', {}).get('description', '')
+    target_package_title = source_package['title']
+    if target_package_title_prefix:
+        target_package_title = '{} {}'.format(target_package_title_prefix, target_package_title)
     with _download_active_resources(source_package) as (tmpdir, resource_hashes):
         res = ckan.package_create(target_instance_name, {
             'name': target_package_name,
-            'title': source_package['title'],
+            'title': target_package_title,
             'private': True,
             'license_id': source_package['license_id'],
             'notes': source_package['notes'],
@@ -161,9 +170,10 @@ def operator(name, params):
     target_instance_name = params['target_instance_name']
     target_organization_id = params['target_organization_id']
     target_package_name_prefix = params['target_package_name_prefix']
+    target_package_title_prefix = params['target_package_title_prefix']
     print('starting ckan_sync operator')
-    print('source_instance_name={} target_instance_name={} target_organization_id={} target_package_name_prefix={}'.format(
-        source_instance_name, target_instance_name, target_organization_id, target_package_name_prefix))
+    print('source_instance_name={} target_instance_name={} target_organization_id={} target_package_name_prefix={} target_package_title_prefix={}'.format(
+        source_instance_name, target_instance_name, target_organization_id, target_package_name_prefix, target_package_title_prefix))
     stats = defaultdict(int)
     for source_package_name in ckan.package_list_public(source_instance_name):
         source_package = None
@@ -180,10 +190,10 @@ def operator(name, params):
             target_existing_package = ckan.package_show(target_instance_name, target_package_name)
             if target_existing_package and target_existing_package['state'] != 'deleted':
                 _update_existing_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
-                                         target_existing_package, stats)
+                                         target_existing_package, target_package_title_prefix, stats)
             else:
                 _create_new_package(source_instance_name, source_package, target_instance_name, target_organization_id, target_package_name,
-                                    stats)
+                                    target_package_title_prefix, stats)
             if stats['source_packages_valid'] % 10 == 0:
                 print(dict(stats))
         except Exception:

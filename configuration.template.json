@@ -25,6 +25,11 @@
                     "name": "target_package_name_prefix",
                     "display": "Target CKAN Package Name Prefix",
                     "description": "This should be a unique prefix which will be added to all synced package names in the target CKAN instance"
+                },
+                {
+                    "name": "target_package_title_prefix",
+                    "display": "Target CKAN Package Title Prefix",
+                    "description": "An optional prefix to append to package titles"
                 }
             ]
         }
