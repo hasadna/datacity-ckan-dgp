@@ -49,7 +49,7 @@
                 },
                 {
                     "name": "mosadot_filename",
-                    "display": "Mosadot export filename",
+                    "display": "Mosadot export filename"
                 }
             ]
         }
