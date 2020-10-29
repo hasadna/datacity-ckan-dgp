@@ -1,4 +1,4 @@
-FROM akariv/dgp-app:latest@sha256:57bbf219db5f20e0b721aac5a5b6dc4c2a4391ddd5ab3e6442f753abc50b0fe4
+FROM akariv/dgp-app:844c2fb4ad6ab5b47696e2eb9d40548ef34e621d
 
 USER root
 COPY requirements.txt .

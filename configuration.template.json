@@ -32,6 +32,26 @@
                     "description": "An optional prefix to append to package titles"
                 }
             ]
+        },
+        {
+            "name": "datagov_fetcher",
+            "display": "Add datasets from data.gov.il",
+            "fields": [
+                {
+                    "name": "target_instance_name",
+                    "display" : "Target CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "target_organization_id",
+                    "display": "Target CKAN Organization ID"
+                },
+                {
+                    "name": "mosadot_filename",
+                    "display": "Mosadot export filename",
+                }
+            ]
         }
     ],
     "theme": {

@@ -69,3 +69,7 @@ def resource_create(instance_name, data, files=None):
 
 def package_update(instance_name, data):
     return api_post(instance_name, 'package_update', json=data)
+
+
+def resource_update(instance_name, data, files=None):
+    return api_post(instance_name, 'resource_update', data=data, files=files)
