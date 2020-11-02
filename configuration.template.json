@@ -52,6 +52,18 @@
                     "display": "Mosadot export filename"
                 }
             ]
+        },
+        {
+            "name": "instance_initializer",
+            "display": "Initialize Datacity CKAN Instances",
+            "fields": [
+                {
+                    "name": "instance_name",
+                    "display": "CKAN Instance to initialize (safe to run multiple times)",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                }
+            ]
         }
     ],
     "theme": {

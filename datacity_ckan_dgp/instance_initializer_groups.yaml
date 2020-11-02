@@ -1,0 +1,43 @@
+- id: demographics
+  title: אוכלוסייה ודמוגרפיה
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-174411.772142society.png
+
+- id: security_infrastructure
+  title: ביטחון ותשתיות
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-173844.948054road.png
+
+- id: health
+  title: בריאות ורפואה
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-09-152708.895086health.png
+
+- id: religion
+  title: דת
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-09-01-101419.443784religion-icon.png
+
+- id: education
+  title: חינוך
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-173649.187069education.png
+
+- id: economy_business
+  title: כלכלה, עסקים ויזמות
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-09-153346.531057business.png
+
+- id: municipality
+  title: עירייה
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-09-153659.494560office.png
+
+- id: welfare_sport
+  title: רווחה וספורט
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-175452.058546leisure.png
+
+- id: transportation
+  title: תחבורה
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-175552.687183bus.png
+
+- id: city_planning_geography
+  title: תכנון עיר וגיאוגרפיה
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-05-174132.658157planning.png
+
+- id: culture_tourism
+  title: תרבות ותיירות
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-08-09-153416.893320culture.png

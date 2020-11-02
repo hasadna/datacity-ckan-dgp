@@ -37,7 +37,7 @@ Start the datacity CKAN instance for local development, see https://github.com/h
 Start the dgp server
 
 ```
-docker-compose up
+docker-compose up --build
 ```
 
 http://localhost:15000
