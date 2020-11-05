@@ -72,6 +72,24 @@
                     "display": "Comma-separated names of the municipality for filtering packages from external sources"
                 }
             ]
+        },
+        {
+            "name": "packages_processing",
+            "display": "Continuous processing tasks for Datacity CKAN Instances",
+            "fields": [
+                {
+                    "name": "instance_name",
+                    "display": "CKAN Instance to run the processing task for",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "task",
+                    "display": "The processing task to run",
+                    "type": "enum",
+                    "options": ["geojson"]
+                }
+            ]
         }
     ],
     "theme": {
