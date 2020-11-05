@@ -7,6 +7,8 @@ def operator(name, params):
     task = params['task']
     if task == "geojson":
         from datacity_ckan_dgp.package_processing_tasks.geojson import process_package
+    elif task == "xlsx":
+        from datacity_ckan_dgp.package_processing_tasks.xlsx import process_package
     else:
         raise Exception("Unknown processing task: {}".format(task))
     num_errors = 0
