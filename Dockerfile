@@ -1,6 +1,7 @@
 FROM akariv/dgp-app:b8de56cf4ed82722a891b1de735f2bbb34dfc9fb
 
 USER root
+RUN apt-get update && apt-get install -y git
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY taxonomies taxonomies
