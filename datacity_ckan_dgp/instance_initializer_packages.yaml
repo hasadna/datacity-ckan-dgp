@@ -1,0 +1,108 @@
+- id: cellular_antennas_active
+  title: אנטנות סלולריות פעילות
+  source_title: המשרד להגנת הסביבה
+  ckan:
+    url: https://data.gov.il
+    package_id: antennaactive
+    resource_id: 19696db6-98c4-4171-9366-1487de3f5dc9
+  muni_filter_column: רשות מקומית
+  geo_wgs_parsing:
+    field_x: "X"
+    field_y: "Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: cellular_antennas_hakama
+  title: אנטנות סלולריות בהקמה
+  source_title: המשרד להגנת הסביבה
+  ckan:
+    url: https://data.gov.il
+    package_id: antenna_hakama
+    resource_id: 4b8180ad-6258-4e9b-8d84-7e796c6df3af
+  muni_filter_column: ישוב
+  geo_wgs_parsing:
+    field_x: "X_ITM"
+    field_y: "Y_ITM"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: fire_rescue_stations
+  title: תחנות כיבוי אש
+  source_title: כבאות והצלה
+  ckan:
+    url: https://data.gov.il
+    package_id: israel_fire_rescue_stations
+    resource_id: e6b2df0b-2908-4cda-9adc-eb3c4d3fbf55
+  muni_filter_column_in:
+    - Regional_Station
+    - Station
+  geo_wgs_parsing:
+    field_x: "Geo_X"
+    field_y: "Geo_Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: corona_data
+  title: נתוני קורונה ליישוב
+  source_title: מידע לעם
+  ckan:
+    url: https://www.odata.org.il
+    package_id: adc425d2-7635-425d-9091-4871018f7cb8
+    resource_id: 83ab3d8b-ec7b-4929-a3b3-bfe83cfe3cb0
+  muni_filter_column: city_desc
+
+- id: talmudiccollege
+  title: ישיבות
+  source_title: המרכז למיפוי ישראל
+  ckan:
+    url: https://data.gov.il
+    package_id: talmudiccollege
+    resource_id: d6865026-2535-4310-99ec-413b2b7fdda0
+  muni_filter_column: SETL_NAME
+  geo_wgs_parsing:
+    field_x: "X"
+    field_y: "Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: kindergarten
+  title: גני ילדים
+  source_title: המרכז למיפוי ישראל
+  ckan:
+    url: https://data.gov.il
+    package_id: kindergarten
+    resource_id: 75d2d6a7-edc9-4615-8e06-fc0940e384ce
+  muni_filter_column: SETL_NAME
+  geo_wgs_parsing:
+    field_x: "X"
+    field_y: "Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: schools
+  title: בתי ספר
+  source_title: המרכז למיפוי ישראל
+  ckan:
+    url: https://data.gov.il
+    package_id: school
+    resource_id: 99b92311-9675-4351-85cd-9ed5ee69a787
+  muni_filter_column: SETL_NAME
+  geo_wgs_parsing:
+    field_x: "X"
+    field_y: "Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"
+
+- id: parkinglots
+  title: מגרשי חניה
+  source_title: המרכז למיפוי ישראל
+  ckan:
+    url: https://data.gov.il
+    package_id: parkinglots
+    resource_id: 34729a10-299b-448d-a223-5d7533e8f147
+  muni_filter_column: SETL_NAME
+  geo_wgs_parsing:
+    field_x: "X"
+    field_y: "Y"
+    output_field_lat: "lat"
+    output_field_lon: "lon"

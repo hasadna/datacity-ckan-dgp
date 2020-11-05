@@ -5,16 +5,30 @@ import datetime
 
 
 def get_instance_api_key_url(instance_name):
-    return (
-        os.environ.get('CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_API_KEY'),
-        os.environ['CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_URL']
-    )
+    if instance_name.startswith('http'):
+        return None, instance_name
+    else:
+        return (
+            os.environ.get('CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_API_KEY'),
+            os.environ['CKAN_INSTANCE_' + instance_name.upper().replace(' ', '_') + '_URL']
+        )
 
 
 def api_request(method, instance_name, action_name, auth=True, **kwargs):
     api_key, url = get_instance_api_key_url(instance_name)
     url = os.path.join(url, 'api', '3', 'action', action_name)
-    return getattr(requests, method.lower())(url, headers={'Authorization': api_key} if auth and api_key else {}, **kwargs).json()
+    headers = {'Authorization': api_key} if auth and api_key else {}
+    if "://data.gov.il" in url:
+        headers['user-agent'] = 'datagov-external-client'
+    res = getattr(requests, method.lower())(url, headers=headers, **kwargs)
+    try:
+        return res.json()
+    except Exception:
+        print(url)
+        print(headers)
+        print(kwargs)
+        print(res.text)
+        raise
 
 
 def api_get(instance_name, action_name, auth=True, **kwargs):
@@ -56,6 +70,12 @@ def package_show(instance_name, package_name):
         return None
 
 
+def package_search(instance_name, params):
+    res = api_get(instance_name, 'package_search', params=params)
+    assert res['success'], res
+    return res['result']
+
+
 def package_create(instance_name, data):
     return api_post(instance_name, 'package_create', json=data)
 
@@ -89,11 +109,26 @@ def group_show(instance_name, group_name, group_type="group", **params):
 
 
 def group_create(instance_name, group_name, group_type='group', **data):
-    return api_post(instance_name, 'group_create', data={"name": group_name, 'type': group_type, **data})
+    res = api_post(instance_name, 'group_create', data={"name": group_name, 'type': group_type, **data})
+    assert res['success'], res
+
+
+def organization_show(instance_name, name, **params):
+    res = api_get(instance_name, 'organization_show', auth=True, params={'id': name, **params})
+    if res['success']:
+        return res['result']
+    else:
+        return None
+
+
+def organization_create(instance_name, name, **data):
+    res = api_post(instance_name, 'organization_create', data={"name": name, **data})
+    assert res['success'], res
 
 
 def group_update(instance_name, data):
-    return api_post(instance_name, 'group_update', json=data)
+    res = api_post(instance_name, 'group_update', json=data)
+    assert res['success'], res
 
 
 def automation_group_get(instance_name, group_name, key):

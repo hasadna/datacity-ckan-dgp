@@ -4,6 +4,7 @@ import hashlib
 import tempfile
 import requests
 from contextlib import contextmanager
+from tempfile import TemporaryDirectory, mkdtemp
 
 
 @contextmanager
@@ -26,3 +27,14 @@ def http_stream_download(filename, requests_kwargs):
                     f.write(chunk)
                     m.update(chunk)
     return m.hexdigest()
+
+
+@contextmanager
+def tempdir(keep=False):
+    if keep:
+        tmpdir = mkdtemp()
+        print("Keeping tempdir: {}".format(tmpdir))
+        yield tmpdir
+    else:
+        with TemporaryDirectory() as tmpdir:
+            yield tmpdir

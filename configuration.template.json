@@ -62,6 +62,14 @@
                     "display": "CKAN Instance to initialize (safe to run multiple times)",
                     "type": "enum",
                     "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "default_organization_title",
+                    "display": "The main organization title, e.g. עיריית נווה חמציצים"
+                },
+                {
+                    "name": "muni_filter_texts",
+                    "display": "Comma-separated names of the municipality for filtering packages from external sources"
                 }
             ]
         }
