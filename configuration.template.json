@@ -34,26 +34,6 @@
             ]
         },
         {
-            "name": "datagov_fetcher",
-            "display": "Add datasets from data.gov.il",
-            "fields": [
-                {
-                    "name": "target_instance_name",
-                    "display" : "Target CKAN Instance",
-                    "type": "enum",
-                    "options": ["__CKAN_INSTANCES__"]
-                },
-                {
-                    "name": "target_organization_id",
-                    "display": "Target CKAN Organization ID"
-                },
-                {
-                    "name": "mosadot_filename",
-                    "display": "Mosadot export filename"
-                }
-            ]
-        },
-        {
             "name": "instance_initializer",
             "display": "Initialize Datacity CKAN Instances",
             "fields": [
@@ -87,7 +67,7 @@
                     "name": "task",
                     "display": "The processing task to run",
                     "type": "enum",
-                    "options": ["geojson"]
+                    "options": ["geojson", "xlsx"]
                 }
             ]
         }

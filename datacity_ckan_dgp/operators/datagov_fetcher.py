@@ -132,6 +132,7 @@ def loader(name, cat):
 
   
 def operator(name, params):
+    raise Exception("Superseded by instance_initializer and packages_processing operators, operator kept for mosadot processing which is TBD")
     mosadot_filename = params['mosadot_filename']
     target_instance_name = params['target_instance_name']
     target_organization_id = params['target_organization_id']
