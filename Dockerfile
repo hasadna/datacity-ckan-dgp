@@ -12,7 +12,7 @@ COPY setup.py /datacity-ckan-dgp/
 COPY datacity_ckan_dgp /datacity-ckan-dgp/datacity_ckan_dgp
 COPY create_operator_dags.sh .
 RUN pip install -e /datacity-ckan-dgp &&\
-    ./create_operator_dags.sh datacity_ckan_dgp/operators dags/operators
+    ./create_operator_dags.sh /datacity-ckan-dgp/datacity_ckan_dgp/operators dags/operators
 USER etl
 
 ENV AIRFLOW__CORE__PARALLELISM=1
