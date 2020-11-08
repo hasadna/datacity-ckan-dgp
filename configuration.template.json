@@ -70,6 +70,39 @@
                     "options": ["geojson", "xlsx"]
                 }
             ]
+        },
+        {
+            "name": "db_fetcher",
+            "display": "Fetch a DB Table into a CKAN Package",
+            "fields": [
+                {
+                    "name": "db_url",
+                    "display": "Source Database",
+                    "type": "enum",
+                    "options": ["__DB_INSTANCES__"]
+                },
+                {
+                    "name": "db_table",
+                    "display": "Database Table to fetch",
+                    "type": "string"
+                },
+                {
+                    "name": "target_instance_name",
+                    "display": "Target CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "target_package_id",
+                    "display": "ID of Package to Update (or Create)",
+                    "type": "string"
+                },
+                {
+                    "name": "target_organization_id",
+                    "display": "Owner Organization of created package",
+                    "type": "string"
+                }
+            ]
         }
     ],
     "theme": {

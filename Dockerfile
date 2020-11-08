@@ -1,4 +1,4 @@
-FROM akariv/dgp-app:b8de56cf4ed82722a891b1de735f2bbb34dfc9fb
+FROM akariv/dgp-app:a4b48191b99a39068ec4f2c98a578d51add17d42
 
 USER root
 RUN apt-get update && apt-get install -y git
