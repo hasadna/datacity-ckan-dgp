@@ -67,7 +67,12 @@ def operator(name, params):
             DF.load(connection_string, table=source_table, name=target_package_id,
                     infer_strategy=DF.load.INFER_PYTHON_TYPES),
             DF.update_resource(-1, path=csv_filename),
-            DF.delete_fields(['_source']),
+            DF.conditional(
+                lambda dp: any(f.name == '_source' for f in dp.resources[0].schema.fields),
+                DF.Flow(
+                    DF.delete_fields(['_source'])
+                )
+            ),
             DF.dump_to_path(tempdir)
         ).process()
         csv_filename = os.path.join(tempdir, csv_filename)
