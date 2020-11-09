@@ -7,7 +7,7 @@ import dataflows as DF
 from datacity_ckan_dgp import ckan
 
 def update_package(instance_name, org_id, package_name, title, resources):
-    print("Creating/updating package {} {}".format(package_name, title))
+    print("Creating/updating package {}@{} {}".format(package_name, org_id, title))
 
     package = ckan.package_show(instance_name, package_name)
     if not package or package['state'] == 'deleted':
@@ -19,11 +19,15 @@ def update_package(instance_name, org_id, package_name, title, resources):
         })
         if res['success']:
             package = ckan.package_show(instance_name, package_name)
+        else:
+            print('Failed to create package', res)
+    print(package)
     if package:
         existing_resources = package.get('resources', [])
         existing_resources = dict((r['format'], r['id']) for r in existing_resources)
         print(existing_resources)
         for format, filename in resources:
+            print(format, filename)
             with open(filename, 'rb') as f:
                 resource = {
                     'package_id': package['id'],
@@ -32,6 +36,7 @@ def update_package(instance_name, org_id, package_name, title, resources):
                     'name': format,
                 }
                 if format in existing_resources:
+                    print('Updating resource', existing_resources[format])
                     resource['id'] = existing_resources[format]
                     res = ckan.resource_update(instance_name, resource, files=[('upload', f)])
                     if not res['success']:
@@ -39,6 +44,7 @@ def update_package(instance_name, org_id, package_name, title, resources):
                     else:
                         print('updated resource {} {}'.format(package_name, format))
                 else:
+                    print('Creatig resource', resource)
                     res = ckan.resource_create(instance_name, resource, files=[('upload', f)])
                     if not res['success']:
                         print('create resource failed: {}'.format(res))
