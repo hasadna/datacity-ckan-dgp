@@ -1,13 +1,10 @@
+import os
+import tempfile
 from decimal import Decimal
 
 import dataflows as DF
 
-import pyproj
-import geojson
-from geojson import Feature, Point, FeatureCollection
-
 from datacity_ckan_dgp import ckan
-from datacity_ckan_dgp import utils
 
 def update_package(instance_name, org_id, package_name, title, resources):
     print("Creating/updating package {} {}".format(package_name, title))
@@ -58,19 +55,22 @@ def operator(name, params):
     print('starting db_fetcher operator')
     print('source_table={} target_instance_name={} target_package_id={} target_organization_id={}'.format(
            source_table,   target_instance_name,   target_package_id,   target_organization_id))
-    DF.Flow(
-        DF.load(connection_string, table=source_table, name=target_package_id,
-                infer_strategy=DF.load.INFER_PYTHON_TYPES),
-        DF.update_resource(-1, path=target_package_id + '.csv'),
-        DF.dump_to_path(target_package_id)
-    ).process()
-    update_package(
-        target_instance_name,
-        target_organization_id,
-        target_package_id,
-        target_package_id,
-        [('CSV', '{}/{}.csv'.format(target_package_id, target_package_id))]
-    )
+    with tempfile.TemporaryDirectory() as tempdir:
+        csv_filename = target_package_id + '.csv'
+        DF.Flow(
+            DF.load(connection_string, table=source_table, name=target_package_id,
+                    infer_strategy=DF.load.INFER_PYTHON_TYPES),
+            DF.update_resource(-1, path=csv_filename),
+            DF.dump_to_path(tempdir)
+        ).process()
+        csv_filename = os.path.join(tempdir, csv_filename)
+        update_package(
+            target_instance_name,
+            target_organization_id,
+            target_package_id,
+            target_package_id,
+            [('CSV', csv_filename)]
+        )
 
 
 if __name__ == '__main__':
