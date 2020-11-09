@@ -59,7 +59,8 @@ def operator(name, params):
     print('source_table={} target_instance_name={} target_package_id={} target_organization_id={}'.format(
            source_table,   target_instance_name,   target_package_id,   target_organization_id))
     DF.Flow(
-        DF.load(connection_string, table=source_table, name=target_package_id),
+        DF.load(connection_string, table=source_table, name=target_package_id,
+                infer_strategy=DF.load.INFER_PYTHON_TYPES),
         DF.update_resource(-1, path=target_package_id + '.csv'),
         DF.dump_to_path(target_package_id)
     ).process()
