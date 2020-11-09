@@ -71,6 +71,7 @@ def operator(name, params):
             DF.dump_to_path(tempdir)
         ).process()
         csv_filename = os.path.join(tempdir, csv_filename)
+        print('{}, {:,} bytes'.format(csv_filename, os.stat(csv_filename).st_size))
         update_package(
             target_instance_name,
             target_organization_id,
