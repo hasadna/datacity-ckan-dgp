@@ -84,7 +84,7 @@
                 {
                     "name": "db_table",
                     "display": "Database Table to fetch",
-                    "type": "string"
+                    "type": "text"
                 },
                 {
                     "name": "target_instance_name",
@@ -95,12 +95,12 @@
                 {
                     "name": "target_package_id",
                     "display": "ID of Package to Update (or Create)",
-                    "type": "string"
+                    "type": "text"
                 },
                 {
                     "name": "target_organization_id",
                     "display": "Owner Organization of created package",
-                    "type": "string"
+                    "type": "text"
                 }
             ]
         }
