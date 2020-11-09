@@ -42,14 +42,14 @@ def update_package(instance_name, org_id, package_name, title, resources):
                     if not res['success']:
                         print('update resource failed: {}'.format(res))
                     else:
-                        print('updated resource {} {}'.format(package_name, format))
+                        print('updated resource {} {}: {}'.format(package_name, format, res))
                 else:
-                    print('Creatig resource', resource)
+                    print('Creating resource', resource)
                     res = ckan.resource_create(instance_name, resource, files=[('upload', f)])
                     if not res['success']:
                         print('create resource failed: {}'.format(res))
                     else:
-                        print('created resource {} {}'.format(package_name, format))
+                        print('created resource {} {}: {}'.format(package_name, format, res))
   
 def operator(name, params):
     connection_string = params['db_url']
@@ -67,6 +67,7 @@ def operator(name, params):
             DF.load(connection_string, table=source_table, name=target_package_id,
                     infer_strategy=DF.load.INFER_PYTHON_TYPES),
             DF.update_resource(-1, path=csv_filename),
+            DF.delete_fields(['_source']),
             DF.dump_to_path(tempdir)
         ).process()
         csv_filename = os.path.join(tempdir, csv_filename)
