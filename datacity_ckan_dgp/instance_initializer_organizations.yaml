@@ -1,0 +1,7 @@
+# ids are significant and should not be changed without modifying related code as well
+
+- id: muni
+
+- id: israel-gov
+  title: מדינת ישראל
+  icon: https://www.datacity.org.il/wp-content/uploads/2020/11/2020-11-12-092519.704524800px-EmblemofIsrael.svg-e1605790227393.png

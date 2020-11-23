@@ -12,6 +12,7 @@ from datacity_ckan_dgp import utils
 
 
 AUTOMATION_GROUP_NAME = 'instance_initializer'
+ORGANIZATIONS_YAML = os.path.join(os.path.dirname(__file__), '..', 'instance_initializer_organizations.yaml')
 GROUPS_YAML = os.path.join(os.path.dirname(__file__), '..', 'instance_initializer_groups.yaml')
 PACKAGES_YAML = os.path.join(os.path.dirname(__file__), '..', 'instance_initializer_packages.yaml')
 DEFAULT_ORGANIZATION_ID = 'muni'  # this must be unique across both groups and organizations
@@ -36,7 +37,8 @@ def init_groups(instance_name):
         with open(GROUPS_YAML) as f:
             groups = yaml.safe_load(f)
         for group in groups:
-            ckan.group_create(instance_name, group['id'], title=group['title'], image_url=group['icon'])
+            if not ckan.group_show(instance_name, group['id']):
+                ckan.group_create(instance_name, group['id'], title=group['title'], image_url=group['icon'])
         ckan.automation_group_set(instance_name, AUTOMATION_GROUP_NAME, 'initialized_groups', True)
         print("OK")
     else:
@@ -45,8 +47,15 @@ def init_groups(instance_name):
 
 def init_organizations(instance_name, default_organization_title):
     print("Initializing organizations")
-    if not ckan.organization_show(instance_name, DEFAULT_ORGANIZATION_ID):
-        ckan.organization_create(instance_name, DEFAULT_ORGANIZATION_ID, title=default_organization_title)
+    if not ckan.automation_group_get(instance_name, AUTOMATION_GROUP_NAME, 'initialized_organizations'):
+        with open(ORGANIZATIONS_YAML) as f:
+            organizations = yaml.safe_load(f)
+        for organization in organizations:
+            if not ckan.organization_show(instance_name, organization['id']):
+                title = default_organization_title if organization['id'] == 'muni' else organization['title']
+                image_url = organization.get('icon')
+                ckan.organization_create(instance_name, organization['id'], title=title, image_url=image_url)
+        ckan.automation_group_set(instance_name, AUTOMATION_GROUP_NAME, 'initialized_organizations', True)
         print("OK")
     else:
         print("Already initialized organizations")
@@ -102,91 +111,104 @@ def muni_resource_filter(source_filename, target_path, muni_filter_column, muni_
 
 
 def init_package(instance_name, package, muni_filter_texts):
-    if ckan.package_show(instance_name, package['id']):
-        print("Package already exists ({})".format(package['id']))
-        return
-    res = ckan.package_search(package['ckan']['url'], {'q': 'name:{}'.format(package['ckan']['package_id'])})
-    assert res['count'] == 1, res
-    source_package = res['results'][0]
-    source_resource = None
-    for resource in source_package['resources']:
-        if resource['id'] == package['ckan']['resource_id']:
-            source_resource = resource
-            break
-    assert source_resource, res
-    try:
-        resource_name = source_resource['name']
-        resource_url = source_resource['url']
-        if "://e.data.gov.il" in resource_url:
-            resource_url = resource_url.replace("://e.data.gov.il", "://data.gov.il")
-    except:
-        print("Failed to get metadata from source resource")
-        print(source_resource)
-        raise
-    resource_description = source_resource.get('description')
-    # resource_last_modified = source_resource.get('last_modified')
-    with utils.tempdir(keep=False) as tmpdir:
-        resource_filename = resource_url.split("/")[-1]
-        if resource_filename.startswith("."):
-            resource_filename = "data{}".format(resource_filename)
-        headers = {}
-        if "://data.gov.il" in resource_url:
-            headers['User-Agent'] = 'datagov-external-client'
-        utils.http_stream_download(os.path.join(tmpdir, resource_filename), {
-            "url": resource_url,
-            "headers": headers
-        })
-        num_filtered_rows = muni_resource_filter(
-            os.path.join(tmpdir, resource_filename), os.path.join(tmpdir, "muni_filtered"), package.get('muni_filter_column'),
-            muni_filter_texts, package.get('geo_wgs_parsing'),
-            package.get('muni_filter_column_in')
-        )
-        if num_filtered_rows > 0:
-            dirnames = list(glob(os.path.join(tmpdir, "muni_filtered", "*.csv")))
-            assert len(dirnames) == 1
-            muni_filtered_csv_filename = dirnames[0]
-            package_description = source_package.get('notes')
-            source_package_url = os.path.join(package['ckan']['url'], 'dataset', package['ckan']['package_id'])
-            source_package_note = "מקור המידע: " + source_package_url
-            package_description = source_package_note if not package_description else package_description + "\n\n" + source_package_note
-            res = ckan.package_create(instance_name, {
-                'name': package['id'],
-                'title': '{} | {}'.format(package['title'], package['source_title']),
-                'private': True,
-                'license_id': source_package.get('license_id'),
-                'notes': package_description,
-                'url': source_package.get('url'),
-                'version': source_package.get('version'),
-                'owner_org': DEFAULT_ORGANIZATION_ID,
-                'extras': [
-                    {"key": "sync_source_package_url", "value": package['ckan']['url'].strip('/') + '/dataset/{}'.format(package['ckan']['package_id'])},
-                    {'key': 'sync_source_org_description', 'value': source_package.get('organization', {}).get('description')}
-                ]
+    existing_package, created_package_res = ckan.package_show(instance_name, package['id']), None
+    if not existing_package:
+        res = ckan.package_search(package['ckan']['url'], {'q': 'name:{}'.format(package['ckan']['package_id'])})
+        assert res['count'] == 1, res
+        source_package = res['results'][0]
+        source_resource = None
+        for resource in source_package['resources']:
+            if resource['id'] == package['ckan']['resource_id']:
+                source_resource = resource
+                break
+        if not source_resource:
+            print("WARNING! Using first resource instead of the specified resource")
+            source_resource = source_package['resources'][0]
+        try:
+            resource_name = source_resource['name']
+            resource_url = source_resource['url']
+            if "://e.data.gov.il" in resource_url:
+                resource_url = resource_url.replace("://e.data.gov.il", "://data.gov.il")
+        except:
+            print("Failed to get metadata from source resource")
+            print(source_resource)
+            raise
+        resource_description = source_resource.get('description')
+        # resource_last_modified = source_resource.get('last_modified')
+        with utils.tempdir(keep=False) as tmpdir:
+            resource_filename = resource_url.split("/")[-1]
+            if resource_filename.startswith("."):
+                resource_filename = "data{}".format(resource_filename)
+            headers = {}
+            if "://data.gov.il" in resource_url:
+                headers['User-Agent'] = 'datagov-external-client'
+            utils.http_stream_download(os.path.join(tmpdir, resource_filename), {
+                "url": resource_url,
+                "headers": headers
             })
-            assert res['success'], 'create package failed: {}'.format(res)
-            target_package_id = res['result']['id']
-            with open(muni_filtered_csv_filename) as f:
-                res = ckan.resource_create(instance_name, {
-                    'package_id': target_package_id,
-                    'description': resource_description,
-                    'format': "CSV",
-                    'name': resource_name,
-                    'url': os.path.basename(muni_filtered_csv_filename),
-                    **({
-                        "geo_lat_field": package['geo_wgs_parsing']["output_field_lat"],
-                        "geo_lon_field": package['geo_wgs_parsing']["output_field_lon"],
-                       } if package.get('geo_wgs_parsing') else {}),
-                }, files={
-                    'upload': (os.path.basename(muni_filtered_csv_filename), f)
+            num_filtered_rows = muni_resource_filter(
+                os.path.join(tmpdir, resource_filename), os.path.join(tmpdir, "muni_filtered"), package.get('muni_filter_column'),
+                muni_filter_texts, package.get('geo_wgs_parsing'),
+                package.get('muni_filter_column_in')
+            )
+            if num_filtered_rows > 0:
+                dirnames = list(glob(os.path.join(tmpdir, "muni_filtered", "*.csv")))
+                assert len(dirnames) == 1
+                muni_filtered_csv_filename = dirnames[0]
+                package_description = source_package.get('notes')
+                source_package_url = os.path.join(package['ckan']['url'], 'dataset', package['ckan']['package_id'])
+                source_package_note = "מקור המידע: " + source_package_url
+                package_description = source_package_note if not package_description else package_description + "\n\n" + source_package_note
+                res = ckan.package_create(instance_name, {
+                    'name': package['id'],
+                    'title': '{} | {}'.format(package['title'], package['source_title']),
+                    'private': True,
+                    'license_id': source_package.get('license_id'),
+                    'notes': package_description,
+                    'url': source_package.get('url'),
+                    'version': source_package.get('version'),
+                    'owner_org': DEFAULT_ORGANIZATION_ID,
+                    'extras': [
+                        {"key": "sync_source_package_url", "value": package['ckan']['url'].strip('/') + '/dataset/{}'.format(package['ckan']['package_id'])},
+                        {'key': 'sync_source_org_description', 'value': source_package.get('organization', {}).get('description')}
+                    ]
                 })
-            assert res['success'], 'create resource failed: {}'.format(res)
-            package = ckan.package_show(instance_name, target_package_id)
-            package['private'] = False
-            res = ckan.package_update(instance_name, package)
-            assert res['success'], 'failed to set package to public: {}'.format(res)
-        else:
-            print("no rows after muni filter")
-
+                assert res['success'], 'create package failed: {}'.format(res)
+                target_package_id = res['result']['id']
+                with open(muni_filtered_csv_filename) as f:
+                    res = ckan.resource_create(instance_name, {
+                        'package_id': target_package_id,
+                        'description': resource_description,
+                        'format': "CSV",
+                        'name': resource_name,
+                        'url': os.path.basename(muni_filtered_csv_filename),
+                        **({
+                            "geo_lat_field": package['geo_wgs_parsing']["output_field_lat"],
+                            "geo_lon_field": package['geo_wgs_parsing']["output_field_lon"],
+                           } if package.get('geo_wgs_parsing') else {}),
+                    }, files={
+                        'upload': (os.path.basename(muni_filtered_csv_filename), f)
+                    })
+                assert res['success'], 'create resource failed: {}'.format(res)
+                created_package = ckan.package_show(instance_name, target_package_id)
+                created_package['private'] = False
+                created_package_res = ckan.package_update(instance_name, created_package)
+                assert created_package_res['success'], 'failed to set package to public: {}'.format(created_package_res)
+            else:
+                print("no rows after muni filter")
+    else:
+        print("Package already exists ({})".format(existing_package['id']))
+    created_package = created_package_res['result'] if created_package_res else existing_package
+    created_package_group_names = [g['name'] for g in created_package.get('groups', [])]
+    created_package['groups'] = [{"name": name} for name in created_package_group_names]
+    num_added_groups = 0
+    for group_name in package.get('groups', []):
+        if group_name not in created_package_group_names:
+            created_package['groups'].append({'name': group_name})
+            num_added_groups += 1
+    res = ckan.package_update(instance_name, created_package)
+    assert res['success'], 'failed to add groups to created package: {}'.format(res)
+    print("Added {} groups".format(num_added_groups))
 
 def init_packages(instance_name, muni_filter_texts, init_package_id=None):
     print("Initializing packages")

@@ -11,6 +11,8 @@
     field_y: "Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - environment
 
 - id: cellular_antennas_hakama
   title: אנטנות סלולריות בהקמה
@@ -25,6 +27,8 @@
     field_y: "Y_ITM"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - environment
 
 - id: fire_rescue_stations
   title: תחנות כיבוי אש
@@ -41,6 +45,8 @@
     field_y: "Geo_Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - security_infrastructure
 
 - id: corona_data
   title: נתוני קורונה ליישוב
@@ -50,6 +56,8 @@
     package_id: adc425d2-7635-425d-9091-4871018f7cb8
     resource_id: 83ab3d8b-ec7b-4929-a3b3-bfe83cfe3cb0
   muni_filter_column: city_desc
+  groups:
+    - health
 
 - id: talmudiccollege
   title: ישיבות
@@ -64,6 +72,8 @@
     field_y: "Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - education
 
 - id: kindergarten
   title: גני ילדים
@@ -78,6 +88,8 @@
     field_y: "Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - education
 
 - id: schools
   title: בתי ספר
@@ -92,6 +104,8 @@
     field_y: "Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - education
 
 - id: parkinglots
   title: מגרשי חניה
@@ -106,3 +120,5 @@
     field_y: "Y"
     output_field_lat: "lat"
     output_field_lon: "lon"
+  groups:
+    - transportation
