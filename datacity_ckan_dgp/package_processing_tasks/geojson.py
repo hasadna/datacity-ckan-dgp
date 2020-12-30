@@ -70,15 +70,16 @@ def process_resource(instance_name, package, resource, package_extras_processed_
 def is_resource_valid_for_processing(instance_name, package, resource):
     if resource.get('geo_lat_field') and resource.get('geo_lon_field'):
         return True
-    elif resource.get('datastore_active'):
-        datastore_info = ckan.datastore_info(instance_name, resource['id'])
-        schema_fields = {f.lower().strip(): f for f in datastore_info.get('schema', {})}
-        for lat_field, lon_field in LAT_LON_FIELD_NAMES:
-            if lat_field in schema_fields and lon_field in schema_fields:
-                resource['geo_lat_field'] = schema_fields[lat_field]
-                resource['geo_lon_field'] = schema_fields[lon_field]
-                return True
-        return False
+    # disabled for now, see comments on this issue for details: https://github.com/hasadna/datacity-k8s/issues/146
+    # elif resource.get('datastore_active'):
+    #     datastore_info = ckan.datastore_info(instance_name, resource['id'])
+    #     schema_fields = {f.lower().strip(): f for f in datastore_info.get('schema', {})}
+    #     for lat_field, lon_field in LAT_LON_FIELD_NAMES:
+    #         if lat_field in schema_fields and lon_field in schema_fields:
+    #             resource['geo_lat_field'] = schema_fields[lat_field]
+    #             resource['geo_lon_field'] = schema_fields[lon_field]
+    #             return True
+    #     return False
     else:
         return False
 
