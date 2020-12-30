@@ -145,3 +145,9 @@ def automation_group_set(instance_name, group_name, key, value):
         group_update(instance_name, group)
     else:
         group_create(instance_name, group_name, group_type='automation', json=json.dumps({key: value}))
+
+
+def datastore_info(instance_name, resource_id):
+    res = api_post(instance_name, 'datastore_info', json={'id': resource_id})
+    assert res['success'], res
+    return res['result']
