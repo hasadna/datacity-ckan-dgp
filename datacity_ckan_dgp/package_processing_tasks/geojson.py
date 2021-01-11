@@ -38,8 +38,11 @@ def pop_case_insensitive(row, field, default=None):
 
 
 def get_lat_lon_values(row, lon_field, lat_field):
-    lon = float(pop_case_insensitive(row, lon_field))
-    lat = float(pop_case_insensitive(row, lat_field))
+    try:
+        lon = float(pop_case_insensitive(row, lon_field))
+        lat = float(pop_case_insensitive(row, lat_field))
+    except:
+        return None, None
     if lon > 200 and lat > 200:
         lon, lat = projector(lon, lat, inverse=True)
     return lon, lat
@@ -48,12 +51,13 @@ def get_lat_lon_values(row, lon_field, lat_field):
 def process_resource(instance_name, package, resource, package_extras_processed_res):
     lat_field = resource.get("geo_lat_field")
     lon_field = resource.get("geo_lon_field")
-    rows = DF.Flow(DF.load(resource['url'])).results()[0][0]
-    fc = FeatureCollection([
-        Feature(geometry=Point(get_lat_lon_values(r, lon_field, lat_field)),
-                properties=dict((k, float(v) if isinstance(v, Decimal) else v) for k, v in r.items()))
-        for r in rows
-    ])
+    features = []
+    for row in DF.Flow(DF.load(resource['url'])).results()[0][0]:
+        properties = dict((k, float(v) if isinstance(v, Decimal) else v) for k, v in row.items())
+        lon, lat = get_lat_lon_values(row, lon_field, lat_field)
+        if lon and lat:
+            features.append(Feature(geometry=Point((lon, lat)), properties=properties))
+    fc = FeatureCollection(features)
     with utils.tempdir() as tmpdir:
         with open(os.path.join(tmpdir, "data.geojson"), 'w') as f:
             geojson.dump(fc, f)
@@ -67,21 +71,37 @@ def process_resource(instance_name, package, resource, package_extras_processed_
     common.update_package_extras(instance_name, package, package_extras_processed_res)
 
 
-def is_resource_valid_for_processing(instance_name, package, resource):
-    if resource.get('geo_lat_field') and resource.get('geo_lon_field'):
-        return True
-    # disabled for now, see comments on this issue for details: https://github.com/hasadna/datacity-k8s/issues/146
-    # elif resource.get('datastore_active'):
-    #     datastore_info = ckan.datastore_info(instance_name, resource['id'])
-    #     schema_fields = {f.lower().strip(): f for f in datastore_info.get('schema', {})}
-    #     for lat_field, lon_field in LAT_LON_FIELD_NAMES:
-    #         if lat_field in schema_fields and lon_field in schema_fields:
-    #             resource['geo_lat_field'] = schema_fields[lat_field]
-    #             resource['geo_lon_field'] = schema_fields[lon_field]
-    #             return True
-    #     return False
+def get_geojson_resource_id_from_package(instance_name, package):
+    valid_csv_resources = []
+    valid_resources = []
+    for resource in package.get('resources', []):
+        is_valid_resource = False
+        if resource.get('geo_lat_field') and resource.get('geo_lon_field'):
+            is_valid_resource = True
+        elif resource.get('datastore_active'):
+            datastore_info = ckan.datastore_info(instance_name, resource['id'])
+            schema_fields = {f.lower().strip(): f for f in datastore_info.get('schema', {})}
+            for lat_field, lon_field in LAT_LON_FIELD_NAMES:
+                if lat_field in schema_fields and lon_field in schema_fields:
+                    resource['geo_lat_field'] = schema_fields[lat_field]
+                    resource['geo_lon_field'] = schema_fields[lon_field]
+                    is_valid_resource = True
+        if is_valid_resource:
+            valid_resources.append(resource)
+            if resource['format'].lower() in ['csv', 'text/csv']:
+                valid_csv_resources.append(resource)
+    if len(valid_resources) == 0:
+        return None
+    elif len(valid_csv_resources) == 1:
+        return valid_csv_resources[0]['id']
     else:
-        return False
+        return valid_resources[0]['id']
+
+
+def is_resource_valid_for_processing(instance_name, package, resource):
+    if '__geojson_resource_id' not in package:
+        package['__geojson_resource_id'] = get_geojson_resource_id_from_package(instance_name, package)
+    return resource['id'] == package['__geojson_resource_id']
 
 
 def process_package(instance_name, package_id):
