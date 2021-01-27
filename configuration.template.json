@@ -111,6 +111,7 @@
         "secondary": "#fff"
     },
     "schedules": [
+        {"name": "@hourly", "display": "Hourly"},
         {"name": "@daily", "display": "Daily"},
         {"name": "@weekly", "display": "Weekly"},
         {"name": "@monthly", "display": "Monthly"},
