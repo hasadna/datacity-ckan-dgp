@@ -1,6 +1,6 @@
 import os
 import sys
-from decimal import Decimal
+import math
 
 import pyproj
 import geojson
@@ -43,17 +43,30 @@ def get_lat_lon_values(row, lon_field, lat_field):
         lat = float(pop_case_insensitive(row, lat_field))
     except:
         return None, None
+    if not lon or not lat or not isinstance(lon, float) or not isinstance(lat, float) or math.isnan(lon) or math.isnan(lat):
+        return None, None
     if lon > 200 and lat > 200:
         lon, lat = projector(lon, lat, inverse=True)
     return lon, lat
+
+
+def get_properties(row):
+    properties = {}
+    for k, v in row.items():
+        try:
+            v = float(v)
+        except:
+            pass
+        properties[k] = v
+    return properties
 
 
 def process_resource(instance_name, package, resource, package_extras_processed_res):
     lat_field = resource.get("geo_lat_field")
     lon_field = resource.get("geo_lon_field")
     features = []
-    for row in DF.Flow(DF.load(resource['url'])).results()[0][0]:
-        properties = dict((k, float(v) if isinstance(v, Decimal) else v) for k, v in row.items())
+    for row in DF.Flow(DF.load(resource['url'], infer_strategy=DF.load.INFER_STRINGS)).results()[0][0]:
+        properties = get_properties(row)
         lon, lat = get_lat_lon_values(row, lon_field, lat_field)
         if lon and lat:
             features.append(Feature(geometry=Point((lon, lat)), properties=properties))

@@ -11,10 +11,9 @@ from datacity_ckan_dgp.package_processing_tasks import common
 
 
 def process_resource(instance_name, package, resource, package_extras_processed_res):
-    print("Processing resource...")
     with utils.tempdir() as tmpdir:
         DF.Flow(
-            DF.load(resource['url']),
+            DF.load(resource['url'], infer_strategy=DF.load.INFER_STRINGS),
             dataflows_xlsx.dump_to_path(os.path.join(tmpdir), format='xlsx')
         ).process()
         filenames = list(glob(os.path.join(tmpdir, "*.xlsx")))

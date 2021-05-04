@@ -73,3 +73,17 @@ Run operators
 ```
 python3 -m datacity_ckan_dgp.operators.ckan_sync '{"source":"Local development","target":"Local development"}'
 ```
+
+## Tests
+
+Install test requirements
+
+```
+pip install -r tests/requirements.txt
+```
+
+Run tests
+
+```
+pytest
+```
