@@ -70,8 +70,22 @@ def package_show(instance_name, package_name):
         return None
 
 
+def resource_show(instance_name, resource_id):
+    res = api_get(instance_name, 'resource_show', auth=True, params={'id': resource_id})
+    if res['success']:
+        return res['result']
+    else:
+        return None
+
+
 def package_search(instance_name, params):
     res = api_get(instance_name, 'package_search', params=params)
+    assert res['success'], res
+    return res['result']
+
+
+def resource_search(instance_name, params):
+    res = api_get(instance_name, 'resource_search', params=params)
     assert res['success'], res
     return res['result']
 

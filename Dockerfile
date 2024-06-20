@@ -1,9 +1,10 @@
-FROM akariv/dgp-app:a4b48191b99a39068ec4f2c98a578d51add17d42
+# Pulled Jun 20, 2024
+FROM akariv/dgp-app@sha256:58fdcb67d72e337818b9a0d67d6705ae95e215c0d0d53202565f577f56f89d91
 
 USER root
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y git zip libgdal-dev build-essential
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY taxonomies taxonomies
 COPY configuration.template.json .
 COPY datacity_ckan_entrypoint.sh .

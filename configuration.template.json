@@ -103,6 +103,33 @@
                     "type": "text"
                 }
             ]
+        },
+        {
+            "name": "gis_fetcher",
+            "display": "Fetch data from GIS Server into a CKAN Package",
+            "fields": [
+                {
+                    "name": "gis_url",
+                    "display": "GIS URL",
+                    "type": "text"
+                },
+                {
+                    "name": "target_instance_name",
+                    "display": "Target CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "target_package_id",
+                    "display": "ID of Package to Update (or Create)",
+                    "type": "text"
+                },
+                {
+                    "name": "target_organization_id",
+                    "display": "Owner Organization of created package",
+                    "type": "text"
+                }
+            ]
         }
     ],
     "theme": {
