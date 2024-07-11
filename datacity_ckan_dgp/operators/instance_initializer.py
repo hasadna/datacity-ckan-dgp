@@ -1,7 +1,7 @@
 import os
 import traceback
 from glob import glob
-from ruamel import yaml
+from ruamel.yaml import YAML
 from collections import defaultdict
 
 import pyproj
@@ -9,6 +9,9 @@ import dataflows as DF
 
 from datacity_ckan_dgp import ckan
 from datacity_ckan_dgp import utils
+
+
+yaml = YAML(typ='safe', pure=True)
 
 
 AUTOMATION_GROUP_NAME = 'instance_initializer'
@@ -35,7 +38,7 @@ def init_groups(instance_name):
     print("Initializing groups")
     if not ckan.automation_group_get(instance_name, AUTOMATION_GROUP_NAME, 'initialized_groups'):
         with open(GROUPS_YAML) as f:
-            groups = yaml.safe_load(f)
+            groups = yaml.load(f)
         for group in groups:
             if not ckan.group_show(instance_name, group['id']):
                 ckan.group_create(instance_name, group['id'], title=group['title'], image_url=group['icon'])
@@ -49,7 +52,7 @@ def init_organizations(instance_name, default_organization_title):
     print("Initializing organizations")
     if not ckan.automation_group_get(instance_name, AUTOMATION_GROUP_NAME, 'initialized_organizations'):
         with open(ORGANIZATIONS_YAML) as f:
-            organizations = yaml.safe_load(f)
+            organizations = yaml.load(f)
         for organization in organizations:
             if not ckan.organization_show(instance_name, organization['id']):
                 title = default_organization_title if organization['id'] == 'muni' else organization['title']
@@ -214,7 +217,7 @@ def init_packages(instance_name, muni_filter_texts, init_package_id=None):
     print("Initializing packages")
     if not ckan.automation_group_get(instance_name, AUTOMATION_GROUP_NAME, 'initialized_packages'):
         with open(PACKAGES_YAML) as f:
-            packages = yaml.safe_load(f)
+            packages = yaml.load(f)
         num_errors = 0
         num_success = 0
         for package in packages:
@@ -248,6 +251,9 @@ def operator(name, params, init_package_id=None):
         init_groups(instance_name)
         init_organizations(instance_name, default_organization_title)
     init_packages(instance_name, muni_filter_texts, init_package_id)
+
+
+# python3 -m datacity_ckan_dgp.operators.instance_initializer '{"instance_name": "local_development", "default_organization_title": "עיריית חיפה", "muni_filter_texts": "חיפה"}'
 
 
 if __name__ == '__main__':

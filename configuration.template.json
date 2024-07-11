@@ -130,6 +130,33 @@
                     "type": "text"
                 }
             ]
+        },
+        {
+            "name": "generic_fetcher",
+            "display": "Fetch/Update data from different source types into a CKAN Package",
+            "fields": [
+                {
+                    "name": "source_url",
+                    "display": "Source URL (source type will be inferred from the URL, see https://github.com/hasadna/datacity-ckan-dgp/blob/main/datacity_ckan_dgp/operators/generic_fetcher.py for details)",
+                    "type": "text"
+                },
+                {
+                    "name": "target_instance_name",
+                    "display": "Target CKAN Instance",
+                    "type": "enum",
+                    "options": ["__CKAN_INSTANCES__"]
+                },
+                {
+                    "name": "target_package_id",
+                    "display": "ID of Package to Update (or Create)",
+                    "type": "text"
+                },
+                {
+                    "name": "target_organization_id",
+                    "display": "Owner Organization of created package",
+                    "type": "text"
+                }
+            ]
         }
     ],
     "theme": {
