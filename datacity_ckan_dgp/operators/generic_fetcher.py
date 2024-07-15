@@ -6,10 +6,8 @@ import contextlib
 from importlib import import_module
 
 
-# the source url will be checked against the following types in order to determine which type of source it is
 FETCHERS = [
     {
-        # python3 -m datacity_ckan_dgp.operators.generic_fetcher '{"source_url": "https://data.gov.il/dataset/automated-devices", "target_instance_name": "LOCAL_DEVELOPMENT", "target_package_id": "automated-devices", "target_organization_id": "israel-gov", "tmpdir": ".data/ckan_fetcher_tmpdir"}'
         'fetcher': 'ckan_dataset',
         'match': {
             'url_contains': '/dataset/'
@@ -30,6 +28,7 @@ def tempdir(tmpdir):
 
 def operator(name, params):
     source_url = params['source_url']
+    source_filter = params.get('source_filter')
     target_instance_name = params['target_instance_name']
     target_package_id = params['target_package_id']
     target_organization_id = params['target_organization_id']
@@ -37,14 +36,14 @@ def operator(name, params):
     with tempdir(tmpdir) as tmpdir:
         print('starting generic_fetcher operator')
         print(f'source_url={source_url} target_instance_name={target_instance_name} target_package_id={target_package_id} target_organization_id={target_organization_id}')
+        print(f'source_filter={source_filter}')
         print(f'tmpdir={tmpdir}')
         for fetcher in FETCHERS:
             assert fetcher['match'].keys() == {'url_contains'}, 'only url_contains match is supported at the moment'
             if fetcher['match']['url_contains'] in source_url:
-                import_module(f'datacity_ckan_dgp.generic_fetchers.{fetcher["fetcher"]}_fetcher').fetch(source_url, target_instance_name, target_package_id, target_organization_id, tmpdir)
+                import_module(f'datacity_ckan_dgp.generic_fetchers.{fetcher["fetcher"]}_fetcher').fetch(source_url, target_instance_name, target_package_id, target_organization_id, tmpdir, source_filter)
                 break
 
 
-# python3 -m datacity_ckan_dgp.operators.generic_fetcher '{"source_url": "https://data.gov.il/dataset/automated-devices", "target_instance_name": "LOCAL_DEVELOPMENT", "target_package_id": "automated-devices", "target_organization_id": "israel-gov", "tmpdir": ".data/ckan_fetcher_tmpdir"}'
 if __name__ == '__main__':
     operator('_', json.loads(sys.argv[1]))
