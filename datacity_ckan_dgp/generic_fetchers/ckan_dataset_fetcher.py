@@ -7,6 +7,8 @@ import dataflows as DF
 
 from .. import ckan
 from ..utils import http_stream_download
+from ..utils.locking import instance_package_lock
+from ..operators import packages_processing
 
 
 DESCRIPTION = """
@@ -22,6 +24,8 @@ If source filter is provided it will do the following:
   3. If GEOJSON resource is available it will be copied and filtered separately
   4. All other resources will be ignored
 
+After create/update of data it will run the packages_processing to create xlsx / geojson related resources
+
 Local development examples:
    without source filter:
      python3 -m datacity_ckan_dgp.operators.generic_fetcher '{"source_url": "https://data.gov.il/dataset/automated-devices", "target_instance_name": "LOCAL_DEVELOPMENT", "target_package_id": "automated-devices", "target_organization_id": "israel-gov", "tmpdir": ".data/ckan_fetcher_tmpdir"}'
@@ -32,12 +36,51 @@ Local development examples:
 DEVEL_SKIP_DOWNLOAD = os.getenv('DEVEL_SKIP_DOWNLOAD', 'false').lower() == 'true'
 
 
+def run_packages_processing(instance_name, package_id):
+    for task in ['geojson', 'xlsx']:
+        assert packages_processing.operator('_', {
+            'instance_name': instance_name,
+            'task': task
+        }, only_package_id=package_id, with_lock=False)
+
+
+def check_row_kv(row, key, val):
+    rowval = str(row.get(key) or '').strip()
+    val = str(val or '').strip()
+    return rowval == val
+
+
+def filter_rows(source_filter):
+
+    def filter_row(row):
+        if isinstance(source_filter, list):
+            for filter_ in source_filter:
+                if all(check_row_kv(row, k, v) for k, v in filter_.items()):
+                    return True
+        elif isinstance(source_filter, dict):
+            filter_type = source_filter.pop('..filtertype', None)
+            if filter_type == 'multi_key_vals':
+                for key in source_filter['keys']:
+                    for val in source_filter['vals']:
+                        if check_row_kv(row, key, val):
+                            return True
+            elif filter_type is None:
+                return all(check_row_kv(row, k, v) for k, v in source_filter.items())
+            else:
+                raise ValueError(f'unsupported filter type: {filter_type}')
+        else:
+            raise ValueError('source_filter must be a list of dictionaries or a dictionary')
+        return False
+
+    return filter_row
+
+
 def get_filtered_tabular_resources_to_update(tmpdir, source_filter, id_, name, format_, hash_, description, filename):
     print(f'filtering tabular data from {filename} with format {format_}...')
     resources_to_update = []
     DF.Flow(
         DF.load(f'{tmpdir}/{id_}', name='filtered', format=format_.lower(), infer_strategy=DF.load.INFER_STRINGS, cast_strategy=DF.load.CAST_TO_STRINGS),
-        DF.filter_rows(lambda row: all(row.get(k) == v for k, v in source_filter.items())),
+        DF.filter_rows(filter_rows(source_filter)),
         DF.printer(),
         DF.dump_to_path(f'{tmpdir}/{id_}-filtered')
     ).process()
@@ -91,7 +134,7 @@ def get_resources_to_update(resources, tmpdir, headers, existing_target_resource
             source_format = resource.get('format') or ''
             source_name = resource.get('name') or ''
             description = resource.get('description') or ''
-            if source_filter or existing_target_resources.get(f'{source_name}.{source_format}', {}).get('hash') != source_hash:
+            if source_filter or existing_target_resources.get(f'{source_name}.{source_format}'.lower(), {}).get('hash') != source_hash:
                 resources_to_update.append((id_, source_name, source_format, source_hash, description, filename))
     if source_filter:
         prefiltered_resources = resources_to_update
@@ -121,7 +164,7 @@ def fetch(source_url, target_instance_name, target_package_id, target_organizati
             hash_ = resource.get('hash') or ''
             id_ = resource.get('id') or ''
             if format_ and name and id_:
-                existing_target_resources[f'{name}.{format_}'] = {'hash': hash_, 'id': id_}
+                existing_target_resources[f'{name}.{format_}'.lower()] = {'hash': hash_, 'id': id_}
     source_package_id = source_url.split('/dataset/')[1].split('/')[0]
     source_instance_baseurl = source_url.split('/dataset/')[0]
     if 'data.gov.il' in source_instance_baseurl:
@@ -143,43 +186,53 @@ def fetch(source_url, target_instance_name, target_package_id, target_organizati
     with open(f'{tmpdir}/package.json', 'w') as f:
         json.dump(res, f)
     package_title = res['result']['title']
+    # organization_title = res['result'].get('organization', {}).get('title')
+    # if organization_title:
+    #     package_title = f'{package_title} | {organization_title}'
+    description = 'מקור המידע: ' + source_url
+    notes = res['result'].get('notes') or ''
+    if notes:
+        description = f'{notes}\n\n{description}'
     resources_to_update = get_resources_to_update(res['result']['resources'], tmpdir, headers, existing_target_resources, source_filter)
     if resources_to_update:
-        print(f'updating {len(resources_to_update)} resources')
-        if not target_package_exists:
-            print('creating target package')
-            res = ckan.package_create(target_instance_name, {
-                'name': target_package_id,
-                'title': package_title,
-                'owner_org': target_organization_id
-            })
-            assert res['success'], str(res)
-        for id_, name, format_, hash_, description, filename in resources_to_update:
-            print(f'{name}.{format_}')
-            if os.path.exists(f'{tmpdir}/{filename}'):
-                os.unlink(f'{tmpdir}/{filename}')
-            os.rename(f'{tmpdir}/{id_}', f'{tmpdir}/{filename}')
-            if f'{name}.{format_}' in existing_target_resources:
-                if existing_target_resources[f'{name}.{format_}'].get('hash') and existing_target_resources[f'{name}.{format_}']['hash'] == hash_:
-                    print('existing resource found and hash is the same, skipping resource data update')
+        with instance_package_lock(target_instance_name, target_package_id):
+            print(f'updating {len(resources_to_update)} resources')
+            if not target_package_exists:
+                print('creating target package')
+                res = ckan.package_create(target_instance_name, {
+                    'name': target_package_id,
+                    'title': package_title,
+                    'notes': description,
+                    'owner_org': target_organization_id
+                })
+                assert res['success'], str(res)
+            for id_, name, format_, hash_, description, filename in resources_to_update:
+                print(f'{name}.{format_}')
+                if os.path.exists(f'{tmpdir}/{filename}'):
+                    os.unlink(f'{tmpdir}/{filename}')
+                os.rename(f'{tmpdir}/{id_}', f'{tmpdir}/{filename}')
+                if f'{name}.{format_}'.lower() in existing_target_resources:
+                    if existing_target_resources[f'{name}.{format_}'.lower()].get('hash') and existing_target_resources[f'{name}.{format_}'.lower()]['hash'] == hash_:
+                        print('existing resource found and hash is the same, skipping resource data update')
+                    else:
+                        print('existing resource found, but hash is different, updating resource data')
+                        res = ckan.resource_update(target_instance_name, {
+                            'id': existing_target_resources[f'{name}.{format_}'.lower()]['id'],
+                            'hash': hash_,
+                            'description': description
+                        }, files=[('upload', open(f'{tmpdir}/{filename}', 'rb'))])
+                        assert res['success'], str(res)
                 else:
-                    print('existing resource found, but hash is different, updating resource data')
-                    res = ckan.resource_update(target_instance_name, {
-                        'id': existing_target_resources[f'{name}.{format_}']['id'],
+                    print('no existing resource found, creating new resource')
+                    res = ckan.resource_create(target_instance_name, {
+                        'package_id': target_package_id,
+                        'format': format_,
+                        'name': name,
                         'hash': hash_,
                         'description': description
                     }, files=[('upload', open(f'{tmpdir}/{filename}', 'rb'))])
                     assert res['success'], str(res)
-            else:
-                print('no existing resource found, creating new resource')
-                res = ckan.resource_create(target_instance_name, {
-                    'package_id': target_package_id,
-                    'format': format_,
-                    'name': name,
-                    'hash': hash_,
-                    'description': description
-                }, files=[('upload', open(f'{tmpdir}/{filename}', 'rb'))])
-                assert res['success'], str(res)
-        print('done, all resources created/updated')
+            run_packages_processing(target_instance_name, target_package_id)
+            print('done, all resources created/updated')
     else:
         print('no resources to create/update')

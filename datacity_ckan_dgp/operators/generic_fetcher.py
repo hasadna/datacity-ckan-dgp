@@ -35,7 +35,7 @@ def operator(name, params):
     tmpdir = params.get('tmpdir')
     with tempdir(tmpdir) as tmpdir:
         print('starting generic_fetcher operator')
-        print(json.dumps(params))
+        print(json.dumps(params, ensure_ascii=False))
         for fetcher in FETCHERS:
             assert fetcher['match'].keys() == {'url_contains'}, 'only url_contains match is supported at the moment'
             if fetcher['match']['url_contains'] in source_url:
