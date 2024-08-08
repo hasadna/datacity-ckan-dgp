@@ -33,13 +33,16 @@ def operator(name, params):
     target_package_id = params['target_package_id']
     target_organization_id = params['target_organization_id']
     tmpdir = params.get('tmpdir')
+    post_processing = params.get('post_processing')
     with tempdir(tmpdir) as tmpdir:
         print('starting generic_fetcher operator')
         print(json.dumps(params, ensure_ascii=False))
         for fetcher in FETCHERS:
             assert fetcher['match'].keys() == {'url_contains'}, 'only url_contains match is supported at the moment'
             if fetcher['match']['url_contains'] in source_url:
-                import_module(f'datacity_ckan_dgp.generic_fetchers.{fetcher["fetcher"]}_fetcher').fetch(source_url, target_instance_name, target_package_id, target_organization_id, tmpdir, source_filter)
+                import_module(f'datacity_ckan_dgp.generic_fetchers.{fetcher["fetcher"]}_fetcher').fetch(
+                    source_url, target_instance_name, target_package_id, target_organization_id, tmpdir, source_filter, post_processing
+                )
                 break
 
 
