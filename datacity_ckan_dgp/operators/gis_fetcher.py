@@ -73,7 +73,7 @@ class FailedToConvertFeature(Exception):
 def geojson_feature_to_itm(feature):
     if feature['type'] != 'Feature':
         raise FailedToConvertFeature(f'feature is not a Feature: {feature}')
-    if feature['geometry']['type'] == 'Polygon':
+    if feature.get('geometry', {}).get('type') == 'Polygon':
         new_coordinates = []
         for ring in feature['geometry']['coordinates']:
             new_ring = []
@@ -81,7 +81,7 @@ def geojson_feature_to_itm(feature):
                 new_ring.append([*projector(*coord)])
             new_coordinates.append(new_ring)
         feature['geometry']['coordinates'] = new_coordinates
-    elif feature['geometry']['type'] == 'MultiPolygon':
+    elif feature.get('geometry', {}).get('type') == 'MultiPolygon':
         new_coordinates = []
         for polygon in feature['geometry']['coordinates']:
             new_polygon = []
@@ -93,7 +93,7 @@ def geojson_feature_to_itm(feature):
             new_coordinates.append(new_polygon)
         feature['geometry']['coordinates'] = new_coordinates
     else:
-        raise FailedToConvertFeature(f'unsupported geometry type: {feature["geometry"]["type"]}')
+        raise FailedToConvertFeature(f'unsupported geometry type: {feature.get('geometry', {}).get('type')}')
     return feature
 
 
