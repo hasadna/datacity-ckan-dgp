@@ -73,9 +73,7 @@ class FailedToConvertFeature(Exception):
 def geojson_feature_to_itm(feature):
     if feature['type'] != 'Feature':
         raise FailedToConvertFeature(f'feature is not a Feature: {feature}')
-    geometry = feature.get('geometry')
-    if not geometry:
-        geometry = {}
+    geometry = feature.get('geometry') or {}
     if geometry.get('type') == 'Polygon':
         new_coordinates = []
         for ring in feature['geometry']['coordinates']:
@@ -148,13 +146,13 @@ def geojson_to_geoxml(features, geoxml_path, itm=False):
             if feature['type'] != 'Feature':
                 raise FailedToConvertFeature(f'feature is not a Feature: {feature}')
             f.write('      <type type="str">Feature</type>\n')
-            geometry = feature['geometry']
+            geometry = feature.get('geometry') or {}
             f.write('      <geometry type="dict">\n')
-            if feature['geometry']['type'] not in ['Polygon', 'MultiPolygon']:
-                raise FailedToConvertFeature(f'unsupported geometry type: {feature["geometry"]["type"]}')
-            f.write(f'        <type type="str">{geometry["type"]}</type>\n')
+            if geometry.get('type') not in ['Polygon', 'MultiPolygon']:
+                raise FailedToConvertFeature(f'unsupported geometry type: {geometry.get("type")}')
+            f.write(f'        <type type="str">{geometry.get("type")}</type>\n')
             f.write('        <coordinates type="list">\n')
-            for item in geometry['coordinates']:
+            for item in geometry.get('coordinates', []):
                 f.write(f'          {get_geoxml_coordinates_item(item)}\n')
             f.write('        </coordinates>\n')
             f.write('      </geometry>\n')
