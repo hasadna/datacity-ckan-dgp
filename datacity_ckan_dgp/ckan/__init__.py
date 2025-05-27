@@ -147,13 +147,17 @@ def group_update(instance_name, data):
 
 def automation_group_get(instance_name, group_name, key):
     group = group_show(instance_name, group_name, group_type='automation')
-    return json.loads(group.get('json', '{}')).get(key) if group else None
+    return json.loads(group['json']).get(key) if group else None
+    # for CKAN 2.11:
+    # return json.loads(group.get('json', '{}')).get(key) if group else None
 
 
 def automation_group_set(instance_name, group_name, key, value):
     group = group_show(instance_name, group_name, group_type='automation')
     if group:
-        group_json = json.loads(group.get('json', '{}'))
+        group_json = json.loads(group['json'])
+        # for CKAN 2.11:
+        # group_json = json.loads(group.get('json', '{}'))
         group_json[key] = value
         group['json'] = json.dumps(group_json)
         group_update(instance_name, group)
