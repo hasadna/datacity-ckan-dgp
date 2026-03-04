@@ -13,15 +13,21 @@ def operator(name, params, only_package_id=None, with_lock=True):
     else:
         raise Exception("Unknown processing task: {}".format(task))
     num_errors = 0
-    for package_id in ckan.package_list(instance_name):
-        if only_package_id and package_id != only_package_id:
-            continue
+    if only_package_id:
         try:
-            with instance_package_lock(instance_name, package_id, with_lock):
-                process_package(instance_name, package_id)
+            with instance_package_lock(instance_name, only_package_id, with_lock):
+                process_package(instance_name, only_package_id)
         except:
             traceback.print_exc()
             num_errors += 1
+    else:
+        for package_id in ckan.package_list(instance_name):
+            try:
+                with instance_package_lock(instance_name, package_id, with_lock):
+                    process_package(instance_name, package_id)
+            except:
+                traceback.print_exc()
+                num_errors += 1
     return num_errors == 0
 
 
