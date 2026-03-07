@@ -1,4 +1,8 @@
+import traceback
+from contextlib import contextmanager
+
 from datacity_ckan_dgp import ckan
+from datacity_ckan_dgp import utils
 
 
 def process_package(instance_name, package_id, task_id, is_resource_valid_for_processing, process_resource):
@@ -19,3 +23,22 @@ def update_package_extras(instance_name, package, package_extras_processed_res):
     package = ckan.package_show(instance_name, package['id'])
     package.setdefault('extras', []).append({"key": package_extras_processed_res, "value": "yes"})
     ckan.package_update(instance_name, package)
+
+
+@contextmanager
+def try_download_resource_url(url, max_bytes=None):
+    with utils.tempdir() as tmpdir:
+        exceeded_max_bytes = False
+        downloaded_filename = None
+        if '.' in url.split('/')[-1] and not url.endswith('.json'):
+            filename = url.split('/')[-1]
+            target_path = f'{tmpdir}/{filename}'
+            try:
+                utils.http_stream_download(target_path, {'url': url}, max_bytes=max_bytes)
+                downloaded_filename = target_path
+            except utils.StreamDownloadMaxBytesExceeded:
+                print(f"Exceeded max bytes while downloading resource from {url}")
+                exceeded_max_bytes = True
+            except Exception:
+                traceback.print_exc()
+        yield exceeded_max_bytes, downloaded_filename

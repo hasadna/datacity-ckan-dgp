@@ -12,6 +12,7 @@ from datacity_ckan_dgp import utils
 from datacity_ckan_dgp.package_processing_tasks import common
 
 
+GEOJSON_PROCESSING_MAX_GB = float(os.getenv('GEOJSON_PROCESSING_MAX_GB', '1'))
 LAT_LON_FIELD_NAMES = (
     ('lat', 'lon'),
     ('lat', 'long'),
@@ -65,22 +66,25 @@ def process_resource(instance_name, package, resource, package_extras_processed_
     lat_field = resource.get("geo_lat_field")
     lon_field = resource.get("geo_lon_field")
     features = []
-    for row in DF.Flow(DF.load(resource['url'], infer_strategy=DF.load.INFER_STRINGS)).results()[0][0]:
-        properties = get_properties(row)
-        lon, lat = get_lat_lon_values(row, lon_field, lat_field)
-        if lon and lat:
-            features.append(Feature(geometry=Point((lon, lat)), properties=properties))
-    fc = FeatureCollection(features)
-    with utils.tempdir() as tmpdir:
-        with open(os.path.join(tmpdir, "data.geojson"), 'w') as f:
-            geojson.dump(fc, f)
-        with open(os.path.join(tmpdir, "data.geojson")) as f:
-            ckan.resource_create(instance_name, {
-                'package_id': package['id'],
-                'description': resource['description'],
-                'format': 'GeoJSON',
-                'name': resource['name'].replace('.csv', '') + '.geojson',
-            }, files=[('upload', f)])
+    with common.try_download_resource_url(resource['url'], max_bytes=GEOJSON_PROCESSING_MAX_GB * 1024 * 1024 * 1024) as (exceeded_max_bytes, downloaded_filename):
+        if not exceeded_max_bytes:
+            for row in DF.Flow(DF.load(downloaded_filename or resource['url'], infer_strategy=DF.load.INFER_STRINGS)).results()[0][0]:
+                properties = get_properties(row)
+                lon, lat = get_lat_lon_values(row, lon_field, lat_field)
+                if lon and lat:
+                    features.append(Feature(geometry=Point((lon, lat)), properties=properties))
+    if not exceeded_max_bytes:
+        fc = FeatureCollection(features)
+        with utils.tempdir() as tmpdir:
+            with open(os.path.join(tmpdir, "data.geojson"), 'w') as f:
+                geojson.dump(fc, f)
+            with open(os.path.join(tmpdir, "data.geojson")) as f:
+                ckan.resource_create(instance_name, {
+                    'package_id': package['id'],
+                    'description': resource['description'],
+                    'format': 'GeoJSON',
+                    'name': resource['name'].replace('.csv', '') + '.geojson',
+                }, files=[('upload', f)])
     common.update_package_extras(instance_name, package, package_extras_processed_res)
 
 

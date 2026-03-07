@@ -5,6 +5,7 @@ from datacity_ckan_dgp.utils.locking import instance_package_lock
 
 def operator(name, params, only_package_id=None, with_lock=True):
     instance_name = params['instance_name']
+    skip_package_ids = params.get('skip_package_ids')
     task = params['task']
     if task == "geojson":
         from datacity_ckan_dgp.package_processing_tasks.geojson import process_package
@@ -14,20 +15,26 @@ def operator(name, params, only_package_id=None, with_lock=True):
         raise Exception("Unknown processing task: {}".format(task))
     num_errors = 0
     if only_package_id:
-        try:
-            with instance_package_lock(instance_name, only_package_id, with_lock):
-                process_package(instance_name, only_package_id)
-        except:
-            traceback.print_exc()
-            num_errors += 1
-    else:
-        for package_id in ckan.package_list(instance_name):
+        if skip_package_ids and only_package_id in skip_package_ids:
+            print(f'Skipping package {only_package_id} as it is in skip_package_ids')
+        else:
             try:
-                with instance_package_lock(instance_name, package_id, with_lock):
-                    process_package(instance_name, package_id)
+                with instance_package_lock(instance_name, only_package_id, with_lock):
+                    process_package(instance_name, only_package_id)
             except:
                 traceback.print_exc()
                 num_errors += 1
+    else:
+        for package_id in ckan.package_list(instance_name):
+            if skip_package_ids and package_id in skip_package_ids:
+                print(f'Skipping package {package_id} as it is in skip_package_ids')
+            else:
+                try:
+                    with instance_package_lock(instance_name, package_id, with_lock):
+                        process_package(instance_name, package_id)
+                except:
+                    traceback.print_exc()
+                    num_errors += 1
     return num_errors == 0
 
 
