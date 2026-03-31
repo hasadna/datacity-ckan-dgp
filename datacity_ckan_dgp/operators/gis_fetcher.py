@@ -161,19 +161,91 @@ def geojson_to_geoxml(features, geoxml_path, itm=False):
 
 
 def create_gis_data(gis_url, tmpdir):
-    with open(os.path.join(tmpdir, 'gis.json'), 'w') as f:
-        json.dump(fetch_gis_json(gis_url), f, ensure_ascii=False, indent=2)
-    with open(os.path.join(tmpdir, 'gis.jsonlines'), 'w') as f:
-        for feature in gis_query_geojson_iterate_all(gis_url):
-            f.write(json.dumps(feature, ensure_ascii=False) + '\n')
-    print("Create geojson")
-    with open(os.path.join(tmpdir, 'gis.geojson'), 'w') as f:
-        f.write('{"type": "FeatureCollection","features": [\n')
-        for i, feature in enumerate(iterate_gis_jsonlines(tmpdir)):
-            if i > 0:
-                f.write(',\n')
-            f.write('  ' + json.dumps(feature, ensure_ascii=False))
-        f.write(']}')
+    if os.path.exists(os.path.join(tmpdir, 'gis.json')):
+        print("WARNING: Using existing gis.json from tmpdir")
+    else:
+        with open(os.path.join(tmpdir, 'gis.json'), 'w') as f:
+            json.dump(fetch_gis_json(gis_url), f, ensure_ascii=False, indent=2)
+    if os.path.exists(os.path.join(tmpdir, 'gis.jsonlines')):
+        print("WARNING: Using existing gis.jsonlines from tmpdir")
+    else:
+        with open(os.path.join(tmpdir, 'gis.jsonlines'), 'w') as f:
+            for feature in gis_query_geojson_iterate_all(gis_url):
+                f.write(json.dumps(feature, ensure_ascii=False) + '\n')
+    # create_geojson(tmpdir)
+    # create_itm_geojson(tmpdir)
+    create_shapefile(tmpdir)
+    # feature_properties = create_csv_xlsx(tmpdir)
+    # create_xml(feature_properties, tmpdir)
+    # create_kml(tmpdir)
+    # create_geoxml(tmpdir)
+    # create_itm_geoxml(tmpdir)
+
+
+def create_itm_geoxml(tmpdir):
+    print("Create gis.itm.geoxml")
+    try:
+        geojson_to_geoxml(iterate_gis_jsonlines(tmpdir), os.path.join(tmpdir, 'gis.itm.geoxml'), itm=True)
+    except FailedToConvertFeature as e:
+        print(str(e))
+        print('failed to convert feature to geoxml')
+        os.unlink(os.path.join(tmpdir, 'gis.itm.geoxml'))
+
+
+def create_geoxml(tmpdir):
+    print("Create gis.geoxml")
+    try:
+        geojson_to_geoxml(iterate_gis_jsonlines(tmpdir), os.path.join(tmpdir, 'gis.geoxml'))
+    except FailedToConvertFeature as e:
+        print(str(e))
+        print('failed to convert feature to geoxml')
+        os.unlink(os.path.join(tmpdir, 'gis.geoxml'))
+
+
+def create_kml(tmpdir):
+    print("Create gis.kml")
+    geojson_to_kml(os.path.join(tmpdir, 'gis.geojson'), os.path.join(tmpdir, 'gis.kml'))
+
+
+def create_xml(feature_properties, tmpdir):
+    print("Create gis.xml")
+    with open(os.path.join(tmpdir, 'gis.xml'), 'w') as f:
+        f.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
+        f.write('<root>\n')
+        for properties in features_to_csv(iterate_gis_jsonlines(tmpdir), fields=feature_properties):
+            f.write('  <item>\n')
+            for k, v in properties.items():
+                v = v.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace(
+                    '\'', '&apos;')
+                f.write(f'    <{k} type="str">{v}</{k}>\n')
+            f.write('  </item>\n')
+        f.write('</root>\n')
+
+
+def create_csv_xlsx(tmpdir):
+    print("Create gis.csv, gis.xlsx")
+    feature_properties = set()
+    for row in features_to_csv(iterate_gis_jsonlines(tmpdir)):
+        feature_properties.update(row.keys())
+    DF.Flow(
+        features_to_csv(iterate_gis_jsonlines(tmpdir), fields=feature_properties),
+        DF.dump_to_path(os.path.join(tmpdir, 'csv')),
+        DF.dump_to_path(os.path.join(tmpdir, 'xlsx'), format='xlsx')
+    ).process()
+    shutil.copyfile(os.path.join(tmpdir, 'csv', 'res_1.csv'), os.path.join(tmpdir, 'gis.csv'))
+    shutil.copyfile(os.path.join(tmpdir, 'xlsx', 'res_1.xlsx'), os.path.join(tmpdir, 'gis.xlsx'))
+    return feature_properties
+
+
+def create_shapefile(tmpdir):
+    print("Create shapefile.zip")
+    geojson_data = geopandas.read_file(os.path.join(tmpdir, 'gis.geojson'))
+    os.makedirs(os.path.join(tmpdir, 'shapefile'), exist_ok=True)
+    geojson_data.to_file(os.path.join(tmpdir, 'shapefile/gis.shp'), driver='ESRI Shapefile', encoding='utf-8')
+    os.system(f'cd {tmpdir} && zip -r shapefile.zip shapefile')
+
+
+def create_itm_geojson(tmpdir):
     print("Create gis.itm.geojson")
     try:
         with open(os.path.join(tmpdir, 'gis.itm.geojson'), 'w') as f:
@@ -188,50 +260,17 @@ def create_gis_data(gis_url, tmpdir):
         print(str(e))
         print('failed to convert feature to itm')
         os.unlink(os.path.join(tmpdir, 'gis.itm.geojson'))
-    print("Create shapefile.zip")
-    geojson_data = geopandas.read_file(os.path.join(tmpdir, 'gis.geojson'))
-    os.makedirs(os.path.join(tmpdir, 'shapefile'), exist_ok=True)
-    geojson_data.to_file(os.path.join(tmpdir, 'shapefile/gis.shp'), driver='ESRI Shapefile')
-    os.system(f'cd {tmpdir} && zip -r shapefile.zip shapefile')
-    print("Create gis.csv, gis.xlsx")
-    feature_properties = set()
-    for row in features_to_csv(iterate_gis_jsonlines(tmpdir)):
-        feature_properties.update(row.keys())
-    DF.Flow(
-        features_to_csv(iterate_gis_jsonlines(tmpdir), fields=feature_properties),
-        DF.dump_to_path(os.path.join(tmpdir, 'csv')),
-        DF.dump_to_path(os.path.join(tmpdir, 'xlsx'), format='xlsx')
-    ).process()
-    shutil.copyfile(os.path.join(tmpdir, 'csv', 'res_1.csv'), os.path.join(tmpdir, 'gis.csv'))
-    shutil.copyfile(os.path.join(tmpdir, 'xlsx', 'res_1.xlsx'), os.path.join(tmpdir, 'gis.xlsx'))
-    print("Create gis.xml")
-    with open(os.path.join(tmpdir, 'gis.xml'), 'w') as f:
-        f.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
-        f.write('<root>\n')
-        for properties in features_to_csv(iterate_gis_jsonlines(tmpdir), fields=feature_properties):
-            f.write('  <item>\n')
-            for k, v in properties.items():
-                v = v.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace(
-                    '\'', '&apos;')
-                f.write(f'    <{k} type="str">{v}</{k}>\n')
-            f.write('  </item>\n')
-        f.write('</root>\n')
-    print("Create gis.kml")
-    geojson_to_kml(os.path.join(tmpdir, 'gis.geojson'), os.path.join(tmpdir, 'gis.kml'))
-    print("Create gis.geoxml")
-    try:
-        geojson_to_geoxml(iterate_gis_jsonlines(tmpdir), os.path.join(tmpdir, 'gis.geoxml'))
-    except FailedToConvertFeature as e:
-        print(str(e))
-        print('failed to convert feature to geoxml')
-        os.unlink(os.path.join(tmpdir, 'gis.geoxml'))
-    print("Create gis.itm.geoxml")
-    try:
-        geojson_to_geoxml(iterate_gis_jsonlines(tmpdir), os.path.join(tmpdir, 'gis.itm.geoxml'), itm=True)
-    except FailedToConvertFeature as e:
-        print(str(e))
-        print('failed to convert feature to geoxml')
-        os.unlink(os.path.join(tmpdir, 'gis.itm.geoxml'))
+
+
+def create_geojson(tmpdir):
+    print("Create geojson")
+    with open(os.path.join(tmpdir, 'gis.geojson'), 'w') as f:
+        f.write('{"type": "FeatureCollection","features": [\n')
+        for i, feature in enumerate(iterate_gis_jsonlines(tmpdir)):
+            if i > 0:
+                f.write(',\n')
+            f.write('  ' + json.dumps(feature, ensure_ascii=False))
+        f.write(']}')
 
 
 def update_resource(target_instance_name, package, format_, resource_name, file_path):
@@ -268,9 +307,12 @@ def update_resource(target_instance_name, package, format_, resource_name, file_
 
 def operator(name, params):
     gis_url = params['gis_url']
-    target_instance_name = params['target_instance_name']
-    target_package_id = params['target_package_id']
-    target_organization_id = params['target_organization_id']
+    target_instance_name = params.get('target_instance_name')
+    if target_instance_name:
+        target_package_id = params['target_package_id']
+        target_organization_id = params['target_organization_id']
+    else:
+        target_package_id, target_organization_id = None, None
     tmpdir = params.get('tmpdir')
     with tempdir(tmpdir) as tmpdir:
         print('starting gis_fetcher operator')
@@ -281,30 +323,36 @@ def operator(name, params):
             gis_json = json.load(f)
         name = gis_json['name']
         print(f'gis name={name}')
-        package = ckan.package_show(target_instance_name, target_package_id)
-        if not package:
-            res = ckan.package_create(target_instance_name, {
-                'name': target_package_id,
-                'title': name,
-                'owner_org': target_organization_id
-            })
-            assert res['success'], str(res)
-            package = res['result']
-        for format_, resource_name, file_name in [
-            ('shapefile', 'SHP', 'shapefile.zip'),
-            ('csv', 'CSV', 'gis.csv'),
-            ('xlsx', 'XLSX', 'gis.xlsx'),
-            ('geojson', 'GeoJSON', 'gis.geojson'),
-            ('geojson', 'GeoJSON-ITM', 'gis.itm.geojson'),
-            ('xml', 'XML', 'gis.xml'),
-            ('kml', 'KML', 'gis.kml'),
-            ('geoxml', 'GeoXML', 'gis.geoxml'),
-            ('geoxml', 'GeoXML-ITM', 'gis.itm.geoxml'),
-        ]:
-            update_resource(target_instance_name, package, format_, resource_name, os.path.join(tmpdir, file_name))
+        if target_instance_name:
+            package = ckan.package_show(target_instance_name, target_package_id)
+            if not package:
+                res = ckan.package_create(target_instance_name, {
+                    'name': target_package_id,
+                    'title': name,
+                    'owner_org': target_organization_id
+                })
+                assert res['success'], str(res)
+                package = res['result']
+            for format_, resource_name, file_name in [
+                ('shapefile', 'SHP', 'shapefile.zip'),
+                ('csv', 'CSV', 'gis.csv'),
+                ('xlsx', 'XLSX', 'gis.xlsx'),
+                ('geojson', 'GeoJSON', 'gis.geojson'),
+                ('geojson', 'GeoJSON-ITM', 'gis.itm.geojson'),
+                ('xml', 'XML', 'gis.xml'),
+                ('kml', 'KML', 'gis.kml'),
+                ('geoxml', 'GeoXML', 'gis.geoxml'),
+                ('geoxml', 'GeoXML-ITM', 'gis.itm.geoxml'),
+            ]:
+                update_resource(target_instance_name, package, format_, resource_name, os.path.join(tmpdir, file_name))
     print('gis_fetcher operator completed successfully')
 
 
+# test on ckan instance:
 # python3 -m datacity_ckan_dgp.operators.gis_fetcher '{"gis_url": "https://gisserver.haifa.muni.il/arcgiswebadaptor/rest/services/PublicSite/Haifa_Eng_Public/MapServer/13", "target_instance_name": "LOCAL_DEVELOPMENT", "target_package_id": "yeudei_karka", "target_organization_id": "muni", "tmpdir": ".data/gis_fetcher_tmpdir"}'
+
+# test locally without ckan instance:
+# python3 -m datacity_ckan_dgp.operators.gis_fetcher '{"gis_url": "https://gisserver.haifa.muni.il/arcgiswebadaptor/rest/services/PublicSite/Haifa_Eng_Public/MapServer/13", "tmpdir": ".data/gis_fetcher_tmpdir"}'
+
 if __name__ == '__main__':
     operator('_', json.loads(sys.argv[1]))
