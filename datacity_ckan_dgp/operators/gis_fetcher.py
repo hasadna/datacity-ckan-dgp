@@ -172,14 +172,14 @@ def create_gis_data(gis_url, tmpdir):
         with open(os.path.join(tmpdir, 'gis.jsonlines'), 'w') as f:
             for feature in gis_query_geojson_iterate_all(gis_url):
                 f.write(json.dumps(feature, ensure_ascii=False) + '\n')
-    # create_geojson(tmpdir)
-    # create_itm_geojson(tmpdir)
+    create_geojson(tmpdir)
+    create_itm_geojson(tmpdir)
     create_shapefile(tmpdir)
-    # feature_properties = create_csv_xlsx(tmpdir)
-    # create_xml(feature_properties, tmpdir)
-    # create_kml(tmpdir)
-    # create_geoxml(tmpdir)
-    # create_itm_geoxml(tmpdir)
+    feature_properties = create_csv_xlsx(tmpdir)
+    create_xml(feature_properties, tmpdir)
+    create_kml(tmpdir)
+    create_geoxml(tmpdir)
+    create_itm_geoxml(tmpdir)
 
 
 def create_itm_geoxml(tmpdir):
