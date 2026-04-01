@@ -20,6 +20,8 @@ def api_request(method, instance_name, action_name, auth=True, **kwargs):
     headers = {'Authorization': api_key} if auth and api_key else {}
     if "://data.gov.il" in url:
         headers['user-agent'] = 'datagov-external-client'
+    if 'verify' not in kwargs:
+        kwargs['verify'] = os.getenv("CKAN_VERIFY_SSL") != "no"
     res = getattr(requests, method.lower())(url, headers=headers, **kwargs)
     try:
         return res.json()

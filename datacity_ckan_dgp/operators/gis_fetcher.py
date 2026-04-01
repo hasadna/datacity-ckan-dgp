@@ -28,14 +28,17 @@ def gis_query_geojson_iterate_all(gis_url):
             'resultRecordCount': result_record_count
         }
         res = requests.get(url, params=params)
-        res.raise_for_status()
-        data = res.json()
-        assert data['type'] == 'FeatureCollection'
-        if not data['features']:
-            break
-        for feature in data['features']:
-            yield feature
-            result_offset += 1
+        try:
+            assert res.status_code == 200
+            data = res.json()
+            assert data['type'] == 'FeatureCollection'
+            if not data['features']:
+                break
+            for feature in data['features']:
+                yield feature
+                result_offset += 1
+        except Exception as e:
+            raise Exception(f'failed to fetch geojson from {url} with params {params}\n{res.content}') from e
 
 
 def iterate_gis_jsonlines(tmpdir):
